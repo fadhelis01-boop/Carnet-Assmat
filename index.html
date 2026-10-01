@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Carnet Assmat</title>
+<meta name="description" content="Calculs et suivi des contrats d'assistante maternelle : salaire, congés payés, mois incomplet, fin de contrat, indemnités d'entretien, abattement fiscal, CMG.">
+<meta name="theme-color" content="#204E4B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Carnet Assmat">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="print-recap"></div>
+
+<!-- Fenêtre : imprimer / PDF -->
+<div class="overlay" id="pc-overlay">
+  <div class="dlg">
+    <h3>Récapitulatif</h3>
+    <p>Comment souhaitez-vous obtenir ce récapitulatif ?</p>
+    <button class="dlg-choice" onclick="pcConfirm('print')"><div class="t">🖨️ Imprimer</div><div class="d">Ouvre la fenêtre d'impression.</div></button>
+    <button class="dlg-choice" onclick="pcConfirm('pdf')"><div class="t">💾 Enregistrer en PDF</div><div class="d">Dans la fenêtre qui s'ouvre, choisissez « Enregistrer au format PDF » comme imprimante (sur Android : bouton « Imprimer » puis « Enregistrer en PDF »).</div></button>
+    <button class="dlg-cancel" onclick="pcCancel()">Annuler</button>
+  </div>
+</div>
+<!-- Fenêtre : confirmation générique -->
+<div class="overlay" id="confirm-overlay">
+  <div class="dlg">
+    <h3 id="confirm-title">Confirmation</h3>
+    <p id="confirm-message"></p>
+    <button class="dlg-choice" onclick="confirmYes()"><div class="t" id="confirm-yes-label">Oui</div></button>
+    <button class="dlg-choice" onclick="confirmNo()"><div class="t" id="confirm-no-label">Non</div></button>
+  </div>
+</div>
+<!-- Fenêtre : saisie d'un texte -->
+<div class="overlay" id="prompt-overlay">
+  <div class="dlg">
+    <h3 id="prompt-title">Saisie</h3>
+    <p id="prompt-message"></p>
+    <div class="field"><input type="text" id="prompt-input"></div>
+    <div class="btn-row"><button class="btn primary" onclick="promptOk()">Valider</button><button class="btn" onclick="promptCancel()">Annuler</button></div>
+  </div>
+</div>
+<!-- Fenêtre : nouveautés réglementaires -->
+<div class="overlay" id="news-overlay">
+  <div class="dlg wide">
+    <h3>📢 Mises à jour réglementaires</h3>
+    <div id="news-body"></div>
+    <button class="btn primary block" onclick="closeOverlay('news-overlay')">J'ai compris</button>
+  </div>
+</div>
+<!-- Fenêtre : fiche d'une journée (suivi) -->
+<div class="overlay" id="day-overlay">
+  <div class="dlg wide" id="day-body"></div>
+</div>
+<!-- Écran de verrouillage par code -->
+<div class="overlay" id="lock-overlay" style="background:var(--bg)">
+  <div class="dlg" style="text-align:center">
+    <h3>🔒 Carnet Assmat</h3>
+    <p>Entrez votre code pour ouvrir le carnet.</p>
+    <div class="field"><input type="password" inputmode="numeric" id="lock-input" autocomplete="off" style="text-align:center;font-size:22px;letter-spacing:.3em" onkeydown="if(event.key==='Enter')unlock()"></div>
+    <button class="btn primary block" onclick="unlock()">Ouvrir</button>
+    <p class="hint" id="lock-msg" style="margin-top:10px"></p>
+  </div>
+</div>
+<!-- Fenêtre : définition d'un mot -->
+<div class="overlay" id="term-overlay" onclick="if(event.target===this)closeOverlay('term-overlay')">
+  <div class="dlg"><h3 id="term-title">—</h3><p id="term-text" style="font-size:.95rem;color:var(--ink)">—</p>
+    <button class="btn primary block" onclick="closeOverlay('term-overlay')">J'ai compris</button>
+    <p class="hint" style="text-align:center"><a href="#" onclick="closeOverlay('term-overlay');showTheme('aide');return false;">Voir tout le lexique</a></p></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="app">
+  <div class="topbar">
+    <button class="icon-btn" id="btn-back" onclick="goBack()" aria-label="Retour">←</button>
+    <h1 id="topbar-title"><span class="tag">Assistante maternelle</span>Carnet de calcul</h1>
+    <button class="icon-btn" onclick="showTheme('aide')" aria-label="Aide">?</button>
+    <button class="icon-btn" onclick="showTheme('reglages')" aria-label="Réglages">⚙︎</button>
+  </div>
+
+  <!-- ===================================================== ACCUEIL ===================================================== -->
+  <div id="home">
+    <!-- ============ AUJOURD'HUI (quotidien) ============ -->
+    <section class="tab-panel" id="tab-accueil">
+      <div class="hello" id="hello">—</div>
+      <div id="onboarding"></div>
+      <div id="todo-wrap" style="display:none">
+        <div class="h-sec">✅ À faire</div>
+        <div class="alerts" id="todo"></div>
+      </div>
+      <div class="h-sec" id="today-title">🗓️ Aujourd'hui</div>
+      <div id="home-today"></div>
+    </section>
+
+    <!-- ============ MOIS (mensuel) ============ -->
+    <section class="tab-panel" id="tab-mois" style="display:none">
+      <div id="home-mois"></div>
+    </section>
+
+    <!-- ============ ANNÉE (annuel) ============ -->
+    <section class="tab-panel" id="tab-annee" style="display:none">
+      <div id="home-annee"></div>
+    </section>
+
+    <!-- ============ ENFANTS & CONTRATS ============ -->
+    <section class="tab-panel" id="tab-enfants" style="display:none">
+      <p class="intro" id="home-intro">Enregistrez chaque enfant que vous accueillez : tous les calculs se rempliront ensuite tout seuls à partir de son contrat.</p>
+      <div class="kids" id="kids"></div>
+      <div id="kids-termines"></div>
+      <div class="month-total" id="month-total" style="display:none"></div>
+      <div id="alerts-wrap" style="display:none">
+        <div class="h-sec">🔔 Tous les points d'attention</div>
+        <div class="alerts" id="alerts"></div>
+      </div>
+    </section>
+
+    <!-- ============ OUTILS (calculs ponctuels, réglages, données) ============ -->
+    <section class="tab-panel" id="tab-outils" style="display:none">
+      <div class="h-sec">Chaque mois</div>
+      <div class="index">
+        <button class="card" onclick="openSuivi('jour')"><span class="num">SUIVI</span><h2>Suivi &amp; paie</h2><p>Journées, calendrier, récapitulatif et clôture du mois.</p></button>
+        <button class="card" onclick="showTheme('mois')"><span class="num">PAJEMPLOI</span><h2>Salaire du mois</h2><p>Total à payer et chiffres à déclarer sur Pajemploi.</p></button>
+        <button class="card" onclick="showTheme('ccass')"><span class="num">ABSENCES</span><h2>Mois incomplet</h2><p>Ce qui se déduit ou non, méthode de la Cour de cassation.</p></button>
+        <button class="card" onclick="showTheme('ie')"><span class="num">FRAIS</span><h2>Indemnités d'entretien</h2><p>Minimum légal selon la durée d'accueil.</p></button>
+      </div>
+      <div class="h-sec">Contrat, congés, fin</div>
+      <div class="index">
+        <button class="card" onclick="showTheme('mensu')"><span class="num">CONTRAT</span><h2>Salaire mensualisé</h2><p>Le salaire de base à partir des heures prévues.</p></button>
+        <button class="card" onclick="showTheme('cp')"><span class="num">CONGÉS</span><h2>Congés payés</h2><p>Jours acquis, reliquats, valeur et paiement.</p></button>
+        <button class="card" onclick="showTheme('fin')"><span class="num">FIN</span><h2>Fin de contrat</h2><p>Préavis, congés, régularisation, rupture.</p></button>
+        <button class="card" onclick="openDocs()"><span class="num">DOCUMENTS</span><h2>Documents</h2><p>Contrat, avenant, lettres, certificat, solde.</p></button>
+      </div>
+      <div class="h-sec">Impôts et aides</div>
+      <div class="index">
+        <button class="card" onclick="showTheme('abattement')"><span class="num">IMPÔTS</span><h2>Abattement fiscal</h2><p>Montant à déclarer, enfant par enfant.</p></button>
+        <button class="card" onclick="showTheme('cmg')"><span class="num">CAF</span><h2>Aide CMG des parents</h2><p>Aide versée aux parents et reste à payer.</p></button>
+      </div>
+
+      <div class="h-sec">📢 Réglementation</div>
+      <div class="box">
+        <div id="reg-home-status" class="hint" style="margin:0 0 10px;">—</div>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn" onclick="regCheckUpdates(false)">🔄 Rechercher les mises à jour</button>
+          <button class="btn" onclick="showRegNews(true)">Dernières évolutions</button>
+        </div>
+      </div>
+      <div class="h-sec">💾 Mes données</div>
+      <div class="box">
+        <p class="hint" style="margin:0 0 10px;">Tout est enregistré <b>sur ce téléphone</b> uniquement. La copie de sécurité permet de tout retrouver si vous changez de téléphone.</p>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn" onclick="syncExport()">⬆️ Faire une copie de sécurité</button>
+          <button class="btn" onclick="syncImportPick()">⬇️ Restaurer une copie</button>
+        </div>
+        <div class="hint" id="sync-status"></div>
+        <div class="hint" id="storage-status"></div>
+      </div>
+      <div class="box" id="install-box" style="display:none">
+        <p class="hint" style="margin:0 0 10px;">Installez le carnet comme une application : icône sur l'écran d'accueil, fonctionne sans internet.</p>
+        <button class="btn primary" onclick="installApp()">📲 Installer l'application</button>
+      </div>
+      <div class="box">
+        <p class="hint" style="margin:0 0 10px;">Découvrir le carnet sans rien risquer : deux enfants fictifs, un mois déjà suivi, tous les écrans à essayer.</p>
+        <button class="btn" onclick="startDemo()">🎓 Essayer avec un exemple</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="showTheme('reglages')">⚙︎ Réglages</button>
+        <button class="btn" onclick="showTheme('aide')">? Aide</button>
+      </div>
+      <p class="hint" id="app-version" style="margin-top:14px"></p>
+    </section>
+  </div>
+
+  <!-- ===================================================== CONTRAT (assistant) ===================================================== -->
+  <div class="theme" id="theme-contrat">
+    <h2 id="ct-title">Nouvel enfant</h2>
+    <p class="sub">Répondez simplement aux questions. Vous pourrez tout modifier plus tard.</p>
+    <div class="steps" id="ct-steps"><span></span><span></span><span></span><span></span><span></span></div>
+
+    <div class="step" data-step="0">
+      <div class="section-label" style="margin-top:0;padding-top:0;border-top:none">1 · L'enfant et sa famille</div>
+      <div class="field"><label>Prénom de l'enfant</label><input type="text" id="ct-enfant" placeholder="ex. Léa" autocomplete="off"></div>
+      <div class="field"><label>Nom de la famille (l'employeur)</label><input type="text" id="ct-famille" placeholder="ex. Famille Martin" autocomplete="off"></div>
+      <div class="field"><label>Date de naissance de l'enfant <span class="hint">(facultatif)</span></label><input type="date" id="ct-naissance">
+        <div class="hint">Sert à savoir jusqu'à quand les parents touchent l'aide CMG (6 ans, 12 ans pour une famille monoparentale).</div></div>
+      <div class="toggle-row"><span class="q">L'enfant est-il en situation de handicap, malade ou inadapté (reconnu) ?</span>
+        <div class="seg" id="ct-handicap"><button class="on">Non</button><button>Oui</button></div>
+        <div class="hint">Si oui, votre abattement fiscal est plus élevé (4 SMIC par jour au lieu de 3).</div></div>
+      <details class="help"><summary>📇 Coordonnées pour les documents (facultatif)</summary><div>
+        <div class="field"><label>Nom de famille de l'enfant</label><input type="text" id="ct-enfantNom" autocomplete="off"></div>
+        <div class="grid2">
+          <div class="field"><label>Parent employeur 1 (prénom, nom)</label><input type="text" id="ct-parent1" autocomplete="off"></div>
+          <div class="field"><label>Parent 2 (prénom, nom)</label><input type="text" id="ct-parent2" autocomplete="off"></div>
+        </div>
+        <div class="field"><label>Adresse de la famille</label><input type="text" id="ct-adresse" autocomplete="off"></div>
+        <div class="grid2">
+          <div class="field"><label>Téléphone</label><input type="text" id="ct-tel" inputmode="tel" autocomplete="off"></div>
+          <div class="field"><label>E-mail</label><input type="text" id="ct-email" inputmode="email" autocomplete="off"></div>
+        </div>
+        Ces informations restent sur votre téléphone et servent seulement à pré-remplir le contrat, les avenants et les documents de fin de contrat. Le numéro de sécurité sociale n'est jamais demandé : il s'écrit à la main sur les documents.</div></details>
+    </div>
+
+    <div class="step" data-step="1">
+      <div class="section-label" style="margin-top:0;padding-top:0;border-top:none">2 · Le contrat</div>
+      <div class="grid2">
+        <div class="field"><label>Date de début du contrat</label><input type="date" id="ct-debut"></div>
+        <div class="field"><label>Date de fin <span class="hint">(si connue)</span></label><input type="date" id="ct-fin">
+          <div class="hint">Laissez vide si le contrat est en cours.</div></div>
+      </div>
+      <div class="toggle-row"><span class="q">L'enfant vient-il chez vous toute l'année ?</span>
+        <div class="seg" id="ct-type"><button class="on">Oui, toute l'année</button><button>Non, une partie de l'année</button></div>
+        <div class="hint" id="ct-type-hint">« Toute l'année » = l'enfant vient toutes les semaines, sauf pendant vos 5 semaines de congés payés (année complète, 52 semaines payées).</div></div>
+      <div class="field" id="ct-semoff-wrap" style="display:none"><label>Touchez les semaines où l'enfant ne vient pas (vacances scolaires, vos congés…)</label>
+        <div class="chips" id="ct-semoff" style="max-height:260px;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:8px"></div>
+        <div class="hint" id="ct-semoff-info">—</div>
+        <button type="button" class="btn small" onclick="ctCocherVacances()" style="margin-top:6px">🏖️ Cocher les vacances scolaires de ma zone</button></div>
+      <div class="field" id="ct-semaines-wrap" style="display:none"><label>Combien de semaines par an l'enfant vient-il ?</label>
+        <input type="number" step="1" min="1" max="46" id="ct-semaines" placeholder="ex. 36">
+        <div class="hint">Comptez seulement les semaines où l'enfant est accueilli (ex. période scolaire : 36 semaines). Ne comptez pas vos congés payés.</div></div>
+      <div class="toggle-row"><span class="q">Avez-vous le titre professionnel d'assistant maternel / garde d'enfants (AM-AP) ?</span>
+        <div class="seg" id="ct-titre"><button class="on">Non</button><button>Oui</button></div>
+        <div class="hint">Avec ce titre, le salaire horaire minimum est plus élevé.</div></div>
+      <details class="help" id="ct-rep-wrap" style="display:none"><summary>🔁 Contrat déjà commencé : reprendre les compteurs (facultatif)</summary><div>
+        <p style="margin:0 0 10px">Si ce contrat a commencé avant que vous utilisiez le carnet, indiquez ce qui s'est passé avant. Les calculs (congés, fin de contrat, absences) en tiendront compte. Tout est facultatif : laissez vide ce que vous ne savez pas.</p>
+        <div class="field"><label>Date à partir de laquelle vous suivez ce contrat dans le carnet</label><input type="date" id="ct-rep-date"><div class="hint">En général le 1er du mois en cours. Les jours d'avant ne vous seront pas demandés.</div></div>
+        <div class="field"><label>Total des salaires bruts versés avant cette date (€)</label><input type="number" step="0.01" id="ct-rep-cumulBrut" placeholder="cumul Pajemploi"><div class="hint">Sert à l'indemnité de rupture (1/80ᵉ). Il figure sur les bulletins Pajemploi.</div></div>
+        <div class="grid2">
+          <div class="field"><label>Jours de congés restants des périodes précédentes</label><input type="number" step="0.5" id="ct-rep-cpReliquat" placeholder="0"></div>
+          <div class="field"><label>Jours de congés déjà pris depuis le 1er juin</label><input type="number" step="0.5" id="ct-rep-cpPrisN" placeholder="0"></div>
+        </div>
+        <div class="field"><label>Jours d'absence pour maladie de l'enfant déjà déduits depuis la dernière date anniversaire du contrat</label><input type="number" step="1" id="ct-rep-mal" placeholder="0"></div>
+        <div class="grid2" id="ct-rep-regul">
+          <div class="field"><label>Année incomplète : salaires mensualisés versés depuis le début de la période de régularisation (€)</label><input type="number" step="0.01" id="ct-rep-regulVerse"></div>
+          <div class="field"><label>Heures réellement effectuées sur cette même période</label><input type="number" step="0.25" id="ct-rep-regulHeures"></div>
+        </div></div></details>
+      <div class="field"><label>Période d'adaptation <span class="hint">(facultatif)</span></label><input type="text" id="ct-adaptation" placeholder="ex. du 1er au 12 septembre, 2 h puis 4 h puis journées complètes" autocomplete="off">
+        <div class="hint">30 jours calendaires au plus, comprise dans la période d'essai. Le 1er mois se calcule avec « Mois incomplet & absences ».</div></div>
+    </div>
+
+    <div class="step" data-step="2">
+      <div class="section-label" style="margin-top:0;padding-top:0;border-top:none">3 · Le planning</div>
+      <div class="toggle-row"><span class="q">Indiquer les heures d'arrivée et de départ ?</span>
+        <div class="seg" id="ct-horaires"><button class="on">Non, juste la durée</button><button>Oui (recommandé pour le suivi)</button></div>
+        <div class="hint">Avec les horaires, le suivi au jour le jour pré-remplit l'arrivée et le départ, et repère tout seul les dépassements.</div></div>
+      <div class="toggle-row"><span class="q">Les horaires sont-ils les mêmes chaque semaine ?</span>
+        <div class="seg" id="ct-alterne"><button class="on">Oui</button><button>Non, ils changent une semaine sur deux</button></div></div>
+      <div class="field"><label id="ct-wA-label">Nombre d'heures d'accueil pour chaque jour de la semaine</label>
+        <div class="week" id="ct-wA"></div>
+        <div class="hint">Laissez vide les jours où l'enfant ne vient pas. Exemple : de 8 h à 17 h 30 = 9,5.</div></div>
+      <div class="field" id="ct-wB-wrap" style="display:none"><label>Semaine B : nombre d'heures pour chaque jour</label><div class="week" id="ct-wB"></div></div>
+      <div class="info-box" id="ct-planning-sum">—</div>
+      <div class="warn-box" id="ct-planning-warn" style="display:none"></div>
+    </div>
+
+    <div class="step" data-step="3">
+      <div class="section-label" style="margin-top:0;padding-top:0;border-top:none">4 · Le tarif et les frais</div>
+      <div class="field"><label>Salaire horaire brut prévu au contrat (€)</label>
+        <input type="number" step="0.01" id="ct-taux" placeholder="ex. 4.50">
+        <div class="hint" id="ct-taux-hint">—</div></div>
+      <div class="field" id="ct-maj-wrap" style="display:none"><label>Majoration des heures au-delà de 45 h par semaine (%)</label>
+        <input type="number" step="1" id="ct-maj" placeholder="10"><div class="hint">10 % minimum.</div></div>
+      <div class="toggle-row"><span class="q">Indemnité d'entretien (frais d'eau, chauffage, jouets…) :</span>
+        <div class="seg" id="ct-ieMode"><button class="on">Le minimum légal (automatique)</button><button>Un montant fixe par jour</button></div>
+        <div class="hint">« Automatique » : le carnet calcule toujours le minimum légal à jour, selon la durée de chaque journée.</div></div>
+      <div class="field subblock" id="ct-ieMontant-wrap" style="display:none"><label>Montant par jour d'accueil (€)</label><input type="number" step="0.01" id="ct-ieMontant" placeholder="ex. 4.00"></div>
+      <div class="toggle-row"><span class="q">Qui fournit les repas et goûters ?</span>
+        <div class="seg" id="ct-repasMode"><button class="on">Les parents</button><button>Moi (je suis payée pour)</button><button>Pas de repas</button></div></div>
+      <div class="field subblock" id="ct-repasPrix-wrap" style="display:none"><label>Prix des repas et goûters par jour d'accueil (€)</label><input type="number" step="0.01" id="ct-repasPrix" placeholder="ex. 4.50"></div>
+      <div class="grid2">
+        <div class="field"><label>Frais kilométriques habituels par mois (€) <span class="hint">(facultatif)</span></label><input type="number" step="0.01" id="ct-km" placeholder="0"></div>
+        <div class="field"><label>Indemnité par kilomètre (€/km) <span class="hint">(facultatif)</span></label><input type="number" step="0.001" id="ct-kmTaux" placeholder="ex. 0.40"><div class="hint">Pour le suivi au jour le jour des trajets.</div></div>
+      </div>
+      <div class="field"><label>Jour du mois où le salaire est payé <span class="hint">(facultatif)</span></label><input type="number" step="1" min="1" max="31" id="ct-paiementJour" placeholder="ex. 5">
+        <div class="hint">Demandé par Pajemploi (« date de paiement ») et à écrire dans le contrat.</div></div>
+      <div class="toggle-row" id="ct-cpMode-row" style="display:none"><span class="q">Comment vos congés payés sont-ils payés pour cet enfant ? (année incomplète)</span>
+        <div class="seg" id="ct-cpMode"><button class="on">Un peu chaque mois (1/12ᵉ)</button><button>En une fois en juin</button><button>Quand je prends mes congés</button></div>
+        <div class="hint">C'est ce qui est écrit dans le contrat. En cas de doute : « en juin ».</div></div>
+    </div>
+
+    <div class="step" data-step="4">
+      <div class="section-label" style="margin-top:0;padding-top:0;border-top:none">5 · Vérification</div>
+      <div class="stub" style="margin-top:0">
+        <div class="stub-head">Ce que prévoit ce contrat</div>
+        <div class="stub-body" id="ct-recap"></div>
+      </div>
+    </div>
+
+    <div class="step-nav">
+      <button class="btn" id="ct-prev" onclick="ctStep(-1)">← Précédent</button>
+      <button class="btn primary" id="ct-next" onclick="ctStep(1)">Suivant →</button>
+    </div>
+    <div class="btn-row" id="ct-extra" style="justify-content:space-between"></div>
+  </div>
+
+  <!-- ===================================================== 01 MENSUALISATION ===================================================== -->
+  <div class="theme" id="theme-mensu" data-persist="1">
+    <h2>Salaire mensualisé</h2>
+    <p class="sub">Le salaire de base est le même chaque mois, congés compris : on « lisse » les heures de l'année sur 12 mois.</p>
+    <div class="kid-picker" data-for="mensu"></div>
+
+    <div class="toggle-row"><span class="q">L'enfant vient-il toute l'année ?</span>
+      <div class="seg" id="mensu-type"><button class="on">Oui (année complète)</button><button>Non (année incomplète)</button></div></div>
+    <div class="field" id="mensu-semaines-wrap" style="display:none"><label>Nombre de semaines d'accueil par an</label>
+      <input type="number" step="1" id="mensu-semaines" placeholder="ex. 36"><div class="hint">Sans compter vos congés payés.</div></div>
+
+    <div class="toggle-row"><span class="q">Le rythme d'accueil est-il le même chaque semaine ?</span>
+      <div class="seg" id="mensu-rythme"><button class="on">Oui, fixe</button><button>Non, alterné (2 semaines)</button></div></div>
+    <div class="grid2">
+      <div class="field"><label id="mensu-hA-label">Heures par semaine</label><input type="number" step="0.25" id="mensu-hA" placeholder="ex. 40"></div>
+      <div class="field" id="mensu-hB-wrap" style="display:none"><label>Heures semaine B</label><input type="number" step="0.25" id="mensu-hB" placeholder="ex. 35"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label id="mensu-jA-label">Jours d'accueil par semaine</label><input type="number" step="0.5" id="mensu-jA" placeholder="ex. 5"></div>
+      <div class="field" id="mensu-jB-wrap" style="display:none"><label>Jours d'accueil semaine B</label><input type="number" step="0.5" id="mensu-jB" placeholder="ex. 4"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Salaire horaire brut (€)</label><input type="number" step="0.01" id="mensu-taux" placeholder="ex. 4.50"></div>
+      <div class="field"><label>Majoration au-delà de 45 h/sem. (%)</label><input type="number" step="1" id="mensu-maj" placeholder="10">
+        <div class="hint">Utile seulement si plus de 45 h par semaine.</div></div>
+    </div>
+    <div class="toggle-row"><span class="q">Avez-vous le titre professionnel AM-AP ?</span>
+      <div class="seg" id="mensu-titre"><button class="on">Non</button><button>Oui</button></div></div>
+
+    <div class="stub">
+      <div class="stub-head">Résultat</div>
+      <div class="stub-body">
+        <div id="mensu-warn"></div>
+        <div class="result-line"><span class="lbl">Moyenne d'heures par semaine</span><span class="val" id="out-mensu-moy">—</span></div>
+        <div class="result-line"><span class="lbl">Heures payées chaque mois</span><span class="val" id="out-mensu-heures">—</span></div>
+        <div class="result-line" id="row-mensu-hmaj" style="display:none"><span class="lbl">dont heures majorées (au-delà de 45 h)</span><span class="val" id="out-mensu-hmaj">—</span></div>
+        <div class="result-line"><span class="lbl">Jours d'accueil par mois (moyenne)</span><span class="val" id="out-mensu-jours">—</span></div>
+        <div class="result-line total"><span class="lbl">Salaire mensuel brut</span><span class="val" id="out-mensu-salaire">—</span></div>
+        <div class="result-line"><span class="lbl">Salaire mensuel net (estimation)</span><span class="val" id="out-mensu-net">—</span></div>
+        <div class="net-hint" id="mensu-net-hint">—</div>
+        <div class="legal"><strong>Règle —</strong> CCN des particuliers employeurs et de l'emploi à domicile (IDCC 3239), socle assistant maternel : salaire mensualisé = heures par semaine × 52 (année complète) ou × nombre de semaines d'accueil (année incomplète) ÷ 12 × salaire horaire. Les heures au-delà de 45 h par semaine sont payées avec la majoration prévue au contrat (10 % minimum). Le salaire horaire ne peut pas être inférieur au minimum conventionnel en vigueur. Les jours par mois sont indicatifs (repère pour l'entretien et les repas).</div>
+        <button class="btn primary block" onclick="askPrintChoice('mensu','Salaire mensualisé — Récapitulatif')">📄 Récapitulatif PDF (enregistrer ou imprimer)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== 02 SALAIRE DU MOIS ===================================================== -->
+  <div class="theme" id="theme-mois" data-persist="1">
+    <h2>Salaire du mois &amp; Pajemploi</h2>
+    <p class="sub">Ce que la famille vous doit pour un mois, et <b>exactement</b> ce qu'il faut recopier sur Pajemploi (une déclaration par enfant depuis janvier 2026). Validez ensuite le mois : il est gardé dans l'historique et sert aux congés, à la fin de contrat et aux impôts.</p>
+    <div class="kid-picker" data-for="mois"></div>
+
+    <div class="field"><label>Mois concerné</label><input type="month" id="mois-mois"></div>
+    <div class="toggle-row"><span class="q">Le contrat est-il en année complète ?</span>
+      <div class="seg" id="mois-type"><button class="on">Oui (année complète)</button><button>Non (année incomplète)</button></div></div>
+    <div class="grid2">
+      <div class="field"><label>Salaire mensualisé brut (€)</label><input type="number" step="0.01" id="mois-base" placeholder="ex. 780.00">
+        <div class="hint">Le salaire de base habituel, sans les congés payés.</div></div>
+      <div class="field"><label>Salaire horaire brut (€)</label><input type="number" step="0.01" id="mois-taux" placeholder="ex. 4.50"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Heures mensualisées</label><input type="number" step="0.01" id="mois-heures" placeholder="ex. 173.33"></div>
+      <div class="field"><label>Jours d'activité mensualisés</label><input type="number" step="0.01" id="mois-jmensu" placeholder="ex. 21.67"><div class="hint">Jours par semaine × semaines ÷ 12.</div></div>
+    </div>
+
+    <div class="toggle-row"><span class="q">Une absence à déduire ce mois-ci (début ou fin de contrat, adaptation, maladie…) ?</span>
+      <div class="seg" id="mois-incomplet"><button class="on">Non</button><button>Oui</button></div></div>
+    <div class="subblock" id="mois-incomplet-wrap" style="display:none">
+      <div class="info-box">Faites d'abord le calcul dans « Mois incomplet &amp; absences » (il dit aussi si l'absence se déduit), puis touchez « Reporter ». <a href="#" onclick="showTheme('ccass');return false;">Ouvrir ce calcul</a></div>
+      <div class="field"><label>Montant brut déduit (€)</label><input type="number" step="0.01" id="mois-deduction" placeholder="0"></div>
+      <div class="grid2">
+        <div class="field"><label>Jours d'accueil prévus ce mois-ci</label><input type="number" step="1" id="mois-jprev" placeholder="ex. 22"></div>
+        <div class="field"><label>Jours non travaillés déduits</label><input type="number" step="1" id="mois-jded" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Heures non travaillées déduites</label><input type="number" step="0.25" id="mois-hded" placeholder="0"></div>
+    </div>
+
+    <div class="toggle-row"><span class="q">Des heures en plus du contrat ce mois-ci ?</span>
+      <div class="seg" id="mois-heuresup"><button class="on">Non</button><button>Oui</button></div></div>
+    <div class="subblock" id="mois-heuresup-wrap" style="display:none">
+      <div class="grid2">
+        <div class="field"><label>Heures complémentaires (jusqu'à 45 h dans la semaine)</label><input type="number" step="0.25" id="mois-hcompl" placeholder="0"><div class="hint">Payées au salaire horaire normal.</div></div>
+        <div class="field"><label>Heures majorées (au-delà de 45 h dans la semaine)</label><input type="number" step="0.25" id="mois-hmaj" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Majoration de ces heures (%)</label><input type="number" step="1" id="mois-majoration" placeholder="10"><div class="hint">10 % minimum.</div></div>
+    </div>
+
+    <div class="toggle-row"><span class="q">Avez-vous travaillé un jour férié ce mois-ci ?</span>
+      <div class="seg" id="mois-ferie"><button class="on">Non</button><button>Oui</button></div>
+      <div class="hint" id="mois-feries-liste"></div></div>
+    <div class="subblock" id="mois-ferie-wrap" style="display:none">
+      <div class="grid2">
+        <div class="field"><label>Heures travaillées un jour férié ordinaire</label><input type="number" step="0.25" id="mois-hferie" placeholder="0"><div class="hint">Majorées de 10 % (en plus du salaire mensualisé).</div></div>
+        <div class="field"><label>Heures travaillées le 1er mai</label><input type="number" step="0.25" id="mois-h1mai" placeholder="0"><div class="hint">Majorées de 100 %.</div></div>
+      </div>
+    </div>
+
+    <div class="section-label">Congés payés ce mois-ci</div>
+    <div id="mois-cp-complete" class="info-box">Année complète : vos congés sont déjà dans le salaire mensualisé. Sur Pajemploi, ne remplissez <b>pas</b> la case « congés payés ».</div>
+    <div id="mois-cp-incomplete" style="display:none">
+      <div class="toggle-row"><span class="q">Ajouter le 1/12ᵉ de congés payés (si votre contrat prévoit un paiement chaque mois) ?</span>
+        <div class="seg" id="mois-cp12"><button class="on">Non</button><button>Oui</button></div>
+        <div class="hint">10 % du salaire brut du mois.</div></div>
+      <div class="grid2">
+        <div class="field"><label>Indemnité de congés payés versée ce mois-ci (€ brut)</label><input type="number" step="0.01" id="mois-cpmontant" placeholder="0"><div class="hint">Paiement en juin ou à la prise des congés : voir « Congés payés ».</div></div>
+        <div class="field"><label>Jours de congés payés pris ce mois-ci</label><input type="number" step="0.5" id="mois-jcp" placeholder="0"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Frais remboursés (pas du salaire)</div>
+    <div class="grid2">
+      <div class="field"><label>Jours de présence réelle de l'enfant</label><input type="number" step="1" id="mois-jours" placeholder="ex. 20"><div class="hint">Pour l'entretien et les repas (jours où l'enfant est venu).</div></div>
+      <div class="field"><label>Heures moyennes par jour de présence</label><input type="number" step="0.25" id="mois-hjour" placeholder="ex. 9"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Indemnité d'entretien par jour (€)</label><input type="number" step="0.01" id="mois-indemj" placeholder="auto"><div class="hint" id="mois-ie-hint">Laissez vide pour appliquer le minimum légal.</div></div>
+      <div class="field"><label>Repas et goûters par jour (€)</label><input type="number" step="0.01" id="mois-repas" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Frais kilométriques du mois (€)</label><input type="number" step="0.01" id="mois-km" placeholder="0"></div>
+    <div class="field"><label>Régularisation d'un mois précédent (€ brut, + ou −)</label><input type="number" step="0.01" id="mois-regul" placeholder="0">
+      <div class="hint">Ex. heures oubliées un mois déjà déclaré. Un trop-perçu ne se retient qu'avec l'accord écrit de la salariée.</div></div>
+    <input type="hidden" id="mois-j8"><input type="hidden" id="mois-hm8">
+
+    <div class="section-label">Paiement</div>
+    <div class="grid2">
+      <div class="field"><label>Date de paiement du salaire</label><input type="date" id="mois-datepaie"></div>
+      <div class="field"><label>Acompte déjà versé (€ net)</label><input type="number" step="0.01" id="mois-acompte" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Heures réellement effectuées ce mois-ci</label><input type="number" step="0.25" id="mois-hreel" placeholder="auto">
+      <div class="hint" id="mois-hreel-hint">Gardées dans l'historique pour la régularisation de fin de contrat (année incomplète). Laissez vide : calculé d'après le planning.</div></div>
+
+    <div class="stub">
+      <div class="stub-head">Résultat</div>
+      <div class="stub-body">
+        <div id="mois-warn"></div>
+        <div class="result-line"><span class="lbl">Salaire brut du mois</span><span class="val" id="out-mois-brut">—</span></div>
+        <div class="result-line"><span class="lbl">Salaire net du mois (estimation)</span><span class="val" id="out-mois-net-sal">—</span></div>
+        <div class="result-line"><span class="lbl">Indemnités d'entretien</span><span class="val" id="out-mois-entretien">—</span></div>
+        <div class="result-line"><span class="lbl">Repas et goûters</span><span class="val" id="out-mois-repas-r">—</span></div>
+        <div class="result-line"><span class="lbl">Frais kilométriques</span><span class="val" id="out-mois-km-r">—</span></div>
+        <div class="result-line total"><span class="lbl">Total à verser par la famille</span><span class="val" id="out-mois-net">—</span></div>
+        <div class="result-line" id="row-mois-reste" style="display:none"><span class="lbl">Reste à verser après l'acompte</span><span class="val" id="out-mois-reste">—</span></div>
+        <div class="result-line"><span class="lbl">Salaire net imposable (estimation, pour vos impôts)</span><span class="val" id="out-mois-netimp">—</span></div>
+        <div class="net-hint">Le net exact est celui du bulletin Pajemploi. Les heures complémentaires et majorées ont des cotisations réduites et sont exonérées d'impôt (dans la limite annuelle) : c'est pris en compte dans l'estimation.</div>
+        <div class="pajemploi-block">
+          <div class="pajemploi-title">À recopier sur Pajemploi (déclaration de cet enfant)</div>
+          <div id="pj-lines"></div>
+        </div>
+        <button class="btn primary block" onclick="validerMois()">✔ Valider ce mois (l'enregistrer dans l'historique)</button>
+        <div class="legal"><strong>Règle —</strong> Pajemploi (2026) : une déclaration par enfant, du 25 du mois au 5 du mois suivant. Heures normales = heures mensualisées (arrondies à l'entier le plus proche), diminuées des heures d'absence déduites, augmentées en année incomplète des heures correspondant aux congés payés versés (montant ÷ salaire horaire). Jours d'activité = jours mensualisés, arrondis à l'entier supérieur. Année complète : jamais de case « congés payés ». Les heures complémentaires (taux normal jusqu'à 45 h par semaine) et majorées (au-delà, +10 % minimum) se déclarent à part avec leur montant net. Jour férié ordinaire travaillé : +10 % ; 1er mai : +100 %. Entretien, repas et km ne sont pas du salaire. Une déclaration se corrige en ligne pendant 2 mois.</div>
+        <button class="btn block" onclick="askPrintChoice('mois','Salaire du mois — Récapitulatif')">📄 Récapitulatif PDF (enregistrer ou imprimer)</button>
+      </div>
+    </div>
+
+    <div class="h-sec">🗂️ Historique des mois validés</div>
+    <div id="mois-journal"></div>
+  </div>
+
+  <!-- ===================================================== 03 MOIS INCOMPLET ===================================================== -->
+  <div class="theme" id="theme-ccass" data-persist="1">
+    <h2>Mois incomplet &amp; absences</h2>
+    <p class="sub">Début ou fin de contrat en cours de mois, absence, maladie, congé sans solde : méthode de la Cour de cassation, et les chiffres pour Pajemploi.</p>
+    <div class="kid-picker" data-for="ccass"></div>
+
+    <div class="field"><label>Pourquoi le salaire de ce mois ne serait-il pas complet ?</label>
+      <select id="ccass-motif-sel"></select>
+      <div class="hint">Plusieurs raisons dans le même mois ? Traitez-les une par une et additionnez seulement les jours et heures <b>déductibles</b>.</div></div>
+    <div id="ccass-motif-info" class="info-box">—</div>
+
+    <div class="subblock" id="ccass-maladie-wrap" style="display:none">
+      <div class="grid2">
+        <div class="field"><label>Jours d'absence pour maladie déjà déduits depuis la date anniversaire du contrat</label><input type="number" step="1" min="0" id="ccass-mal-deja" placeholder="0"></div>
+        <div class="field"><label>Jours d'absence pour maladie (avec certificat) ce mois-ci</label><input type="number" step="1" min="0" id="ccass-mal-mois" placeholder="0"></div>
+      </div>
+      <div class="toggle-row"><span class="q">Hospitalisation, ou maladie d'au moins 14 jours d'affilée ?</span>
+        <div class="seg" id="ccass-mal-longue"><button class="on">Non</button><button>Oui</button></div></div>
+      <div class="info-box" id="ccass-mal-result">—</div>
+    </div>
+
+    <div class="subblock" id="ccass-evt-wrap" style="display:none">
+      <div class="field"><label>Quel événement ?</label>
+        <select id="ccass-evt-type">
+          <option value="mariage">Votre mariage ou PACS</option>
+          <option value="mariageEnfant">Mariage de votre enfant</option>
+          <option value="naissance">Naissance ou adoption</option>
+          <option value="decesEnfant">Décès de votre enfant (25 ans ou plus)</option>
+          <option value="decesEnfantMoins25">Décès de votre enfant de moins de 25 ans</option>
+          <option value="decesConjoint">Décès du conjoint, partenaire de PACS ou concubin</option>
+          <option value="decesParentFratrie">Décès d'un parent, beau-parent, frère ou sœur</option>
+          <option value="handicapEnfant">Annonce d'un handicap, d'une maladie chronique ou d'un cancer chez votre enfant</option>
+        </select></div>
+      <div class="field"><label>Jours d'absence pris pour cet événement</label><input type="number" step="1" min="0" id="ccass-evt-jours" placeholder="0"></div>
+      <div class="info-box" id="ccass-evt-result">—</div>
+    </div>
+
+    <div class="subblock" id="ccass-ea-wrap" style="display:none">
+      <div class="toggle-row"><span class="q">Votre enfant a-t-il moins d'un an, ou avez-vous au moins 3 enfants de moins de 16 ans ?</span>
+        <div class="seg" id="ccass-ea-plus"><button class="on">Non (3 jours par an)</button><button>Oui (5 jours par an)</button></div></div>
+      <div class="grid2">
+        <div class="field"><label>Jours déjà pris cette année</label><input type="number" step="1" min="0" id="ccass-ea-deja" placeholder="0"></div>
+        <div class="field"><label>Jours d'absence ce mois-ci</label><input type="number" step="1" min="0" id="ccass-ea-mois" placeholder="0"></div>
+      </div>
+      <div class="info-box" id="ccass-ea-result">—</div>
+    </div>
+
+    <div class="subblock" id="ccass-adapt-wrap" style="display:none">
+      <div class="field"><label>Heures d'adaptation réellement effectuées ce mois-ci</label><input type="number" step="0.25" min="0" id="ccass-adapt-faites" placeholder="ex. 40"></div>
+      <div class="info-box" id="ccass-adapt-result">—</div>
+    </div>
+    <div class="btn-row" id="ccass-report-row" style="display:none;margin:-6px 0 16px"><button type="button" class="btn small" id="ccass-report-btn" onclick="ccassReport()">⬇️ Reporter dans les cases ci-dessous</button></div>
+
+    <div class="field"><label>Salaire mensualisé brut, heures normales (€)</label><input type="number" step="0.01" id="ccass-base-normal" placeholder="ex. 902.16"></div>
+    <div class="toggle-row"><span class="q">Le contrat comporte-t-il des heures majorées mensualisées (au-delà de 45 h) ?</span>
+      <div class="seg" id="ccass-hassup"><button class="on">Non</button><button>Oui</button></div></div>
+    <div id="ccass-base-sup-wrap" class="field subblock" style="display:none"><label>Salaire mensualisé brut, heures majorées (€)</label><input type="number" step="0.01" id="ccass-base-sup" placeholder="0"></div>
+
+    <div class="section-label">Les valeurs habituelles (moyenne lissée)</div>
+    <div class="grid2">
+      <div class="field"><label>Jours d'accueil habituels par mois</label><input type="number" step="0.01" id="ccass-jours-habituel" placeholder="ex. 18"></div>
+      <div class="field"><label>Heures normales habituelles par mois</label><input type="number" step="0.01" id="ccass-hnorm-habituel" placeholder="ex. 157"></div>
+    </div>
+    <div id="ccass-hsup-habituel-wrap" class="field subblock" style="display:none"><label>Heures majorées habituelles par mois</label><input type="number" step="0.01" id="ccass-hsup-habituel" placeholder="0"></div>
+
+    <div class="section-label">Le mois concerné</div>
+    <div class="toggle-row"><span class="q">Compter les jours et heures prévus avec un calendrier ?</span>
+      <div class="seg" id="ccass-usecal"><button class="on">Oui, avec le calendrier</button><button>Non, je saisis les totaux</button></div></div>
+    <div id="ccass-cal-wrap">
+      <div class="field"><label>Mois</label><input type="month" id="ccass-cal-mois">
+        <div class="hint">Pour chaque jour, les heures normales prévues au contrat (les jours vides = pas d'accueil prévu). Les jours fériés sont signalés en orange.</div></div>
+      <div class="btn-row" style="margin:-4px 0 6px"><button class="btn small" onclick="ccassPrefillCalendar()">📅 Remplir avec le planning du contrat</button><button class="btn small" onclick="ccassClearCalendar()">Vider</button></div>
+      <div id="ccass-calendar"></div>
+      <div class="result-line"><span class="lbl">Jours d'accueil prévus dans le mois</span><span class="val" id="out-ccass-cal-jours">—</span></div>
+      <div class="result-line"><span class="lbl">Heures normales prévues dans le mois</span><span class="val" id="out-ccass-cal-hnorm">—</span></div>
+      <div class="result-line" id="row-ccass-cal-hsup" style="display:none"><span class="lbl">Heures majorées prévues dans le mois</span><span class="val" id="out-ccass-cal-hsup">—</span></div>
+    </div>
+    <div id="ccass-manuel-wrap" style="display:none">
+      <div class="field"><label>Jours d'accueil prévus au contrat pour ce mois précis</label><input type="number" step="1" id="ccass-jours-potentiels" placeholder="ex. 22"></div>
+      <div class="field"><label>Heures normales prévues au contrat pour ce mois précis</label><input type="number" step="0.25" id="ccass-hpot-normal" placeholder="ex. 196.5"><div class="hint">Le total réel du planning de ce mois (pas la moyenne).</div></div>
+      <div id="ccass-hpot-sup-wrap" class="field subblock" style="display:none"><label>Heures majorées prévues pour ce mois précis</label><input type="number" step="0.25" id="ccass-hpot-sup" placeholder="0"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="field"><label>Jours non travaillés à déduire</label><input type="number" step="1" id="ccass-jours-non-travailles" placeholder="ex. 2"></div>
+      <div class="field"><label>Heures normales à déduire</label><input type="number" step="0.25" id="ccass-hded-normal" placeholder="ex. 17.5"></div>
+    </div>
+    <div id="ccass-hded-sup-wrap" class="field subblock" style="display:none"><label>Heures majorées à déduire</label><input type="number" step="0.25" id="ccass-hded-sup" placeholder="0"></div>
+
+    <div class="toggle-row"><span class="q">Ajouter les indemnités d'entretien du mois ?</span>
+      <div class="seg" id="ccass-entretien"><button class="on">Non</button><button>Oui</button></div></div>
+    <div id="ccass-ie-wrap" class="field subblock" style="display:none"><label>Indemnité par jour d'accueil (€)</label><input type="number" step="0.01" id="ccass-ie-montant" placeholder="ex. 3.92">
+      <div class="hint">Multipliée par les jours réellement accueillis (prévus − non travaillés).</div></div>
+
+    <div class="stub">
+      <div class="stub-head">Résultat</div>
+      <div class="stub-body">
+        <div id="ccass-verdict"></div>
+        <div class="result-line"><span class="lbl">Montant déduit, heures normales</span><span class="val" id="out-ccass-deduct-normal">—</span></div>
+        <div class="result-line" id="row-ccass-deduct-sup" style="display:none"><span class="lbl">Montant déduit, heures majorées</span><span class="val" id="out-ccass-deduct-sup">—</span></div>
+        <div class="result-line"><span class="lbl">Salaire du mois recalculé (brut)</span><span class="val" id="out-ccass-salaire">—</span></div>
+        <div class="result-line" id="row-ccass-entretien" style="display:none"><span class="lbl">Indemnités d'entretien</span><span class="val" id="out-ccass-entretien">—</span></div>
+        <div class="result-line total"><span class="lbl">Total à verser (brut)</span><span class="val" id="out-ccass-total">—</span></div>
+        <div class="result-line"><span class="lbl">Total net (estimation)</span><span class="val" id="out-ccass-net">—</span></div>
+        <div class="pajemploi-block">
+          <div class="pajemploi-title">À reporter sur Pajemploi</div>
+          <div class="result-line"><span class="lbl">Nombre de jours d'activité</span><span class="val" id="out-ccass-jours-declar">—</span></div>
+          <div class="result-line"><span class="lbl">Heures normales</span><span class="val" id="out-ccass-hnorm-declar">—</span></div>
+          <div class="result-line" id="row-ccass-hsup-declar" style="display:none"><span class="lbl">Heures majorées</span><span class="val" id="out-ccass-hsup-declar">—</span></div>
+          <div class="result-line"><span class="lbl">Total des heures</span><span class="val" id="out-ccass-h-total-declar">—</span></div>
+        </div>
+        <button class="btn block" onclick="ccassSendToMois()">➡️ Reporter la déduction dans « Salaire du mois »</button>
+        <div class="legal"><strong>Règle —</strong> pour un mois incomplet, la Cour de cassation impose de rapporter le salaire mensualisé aux heures réellement prévues au planning de ce mois (et non à un prorata de jours calendaires) : montant déduit = salaire mensualisé × heures non travaillées ÷ heures prévues dans le mois. Les jours et heures à déclarer s'obtiennent avec la même proportion appliquée aux valeurs habituelles, arrondies à l'entier supérieur. La méthode s'applique à toute absence <u>non rémunérée</u> : arrivée ou départ en cours de mois, premier mois avec période d'adaptation (obligatoire depuis la CCN de 2022), arrêt maladie, accident du travail, maternité ou paternité de l'assistante maternelle (le particulier employeur ne maintient pas le salaire : indemnités CPAM et IRCEM Prévoyance), congé sans solde ou congés payés non acquis, enfant de l'assmat malade, événement familial au-delà des jours prévus par la loi, enfant accueilli malade avec certificat médical (5 jours par période de 12 mois à partir de la date du contrat ; hospitalisation ou maladie d'au moins 14 jours consécutifs non rémunérées). Elle ne s'applique pas aux absences rémunérées ou déjà exclues : enfant absent pour convenance des parents ou fermeture imposée par eux, enfant malade sans certificat ou au-delà des 5 jours, congés payés en année complète, semaines non prévues en année incomplète, jours fériés chômés, événements familiaux dans la limite légale. Indemnités d'entretien et de repas : jamais dues les jours où l'enfant n'est pas accueilli.</div>
+        <button class="btn primary block" onclick="askPrintChoice('ccass','Mois incomplet — Récapitulatif')">📄 Récapitulatif PDF (enregistrer ou imprimer)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== 04 CONGÉS PAYÉS ===================================================== -->
+  <div class="theme" id="theme-cp" data-persist="1">
+    <h2>Congés payés</h2>
+    <p class="sub">Suivi sur 3 périodes de référence (du 1er juin au 31 mai) avec report des reliquats, valeur en euros et paiement.</p>
+    <div class="kid-picker" data-for="cp"></div>
+    <div class="btn-row" style="margin:-6px 0 14px"><button class="btn small" onclick="cpAutoDates()">📅 Remplir les dates automatiquement</button></div>
+
+    <div id="cp-periods"></div>
+
+    <div class="toggle-row"><span class="q">Calculer aussi la valeur en euros ?</span>
+      <div class="seg" id="cp-valeur"><button class="on">Non</button><button>Oui</button></div></div>
+    <div id="cp-valeur-wrap" class="subblock" style="display:none">
+      <div class="toggle-row"><span class="q">Le contrat est-il en année complète ?</span>
+        <div class="seg" id="cp-type"><button class="on">Oui (année complète)</button><button>Non (année incomplète)</button></div></div>
+      <div class="grid2">
+        <div class="field"><label>Salaire horaire brut (€)</label><input type="number" step="0.01" id="cp-taux" placeholder="ex. 4.50"></div>
+        <div class="field"><label>Heures par semaine (moyenne)</label><input type="number" step="0.25" id="cp-heures" placeholder="ex. 40"></div>
+      </div>
+      <div class="field"><label>Total des salaires bruts de la période de référence (1er juin – 31 mai)</label><input type="number" step="0.01" id="cp-total-salaires" placeholder="ex. 9000">
+        <div class="hint">Sans les indemnités d'entretien, repas ni km. <span id="cp-total-suggest"></span></div></div>
+    </div>
+
+    <div class="stub">
+      <div class="stub-head">Résultat</div>
+      <div class="stub-body">
+        <div class="result-line"><span class="lbl">Congés acquis (N-2 + N-1)</span><span class="val" id="out-cp-acquis">—</span></div>
+        <div class="result-line"><span class="lbl">Congés en cours d'acquisition (N)</span><span class="val" id="out-cp-encours">—</span></div>
+        <div class="result-line"><span class="lbl">Congés pris (3 périodes)</span><span class="val" id="out-cp-pris">—</span></div>
+        <div id="cp-repart"></div>
+        <div class="result-line total"><span class="lbl">Total de jours disponibles</span><span class="val" id="out-cp-total">—</span></div>
+        <div id="cp-valeur-results" style="display:none">
+          <div class="result-line"><span class="lbl">Méthode du maintien de salaire</span><span class="val" id="out-cp-maintien">—</span></div>
+          <div class="result-line"><span class="lbl">Méthode du dixième (10 %)</span><span class="val" id="out-cp-dixieme">—</span></div>
+          <div class="result-line total fav"><span class="lbl">Montant dû (le plus favorable)<span class="badge" id="cp-badge">—</span></span><span class="val" id="out-cp-verser">—</span></div>
+          <div class="result-line"><span class="lbl">Montant net (estimation)</span><span class="val" id="out-cp-net">—</span></div>
+          <div id="cp-paiement"></div>
+        </div>
+        <div class="legal"><strong>Règle —</strong> 2,5 jours ouvrables acquis par mois (ou 4 semaines) d'accueil, arrondis au jour supérieur, 30 jours au maximum par période (1er juin – 31 mai). Depuis la loi du 22 avril 2024, un arrêt maladie non professionnel donne aussi des congés : 2 jours par mois (24 jours par an au maximum). Les congés se prennent d'abord sur les plus anciens. Le montant retenu est le plus favorable entre le maintien de salaire et 10 % des salaires de la période (Code du travail, art. L3141-24). Année complète : les congés sont déjà payés dans le salaire mensualisé ; en juin, on vérifie si les 10 % sont plus favorables et on verse la différence. Année incomplète : les congés s'ajoutent au salaire mensualisé, payés selon le contrat (en juin, à la prise des congés, ou par 12ᵉ chaque mois).</div>
+        <button class="btn primary block" onclick="askPrintChoice('cp','Congés payés — Récapitulatif')">📄 Récapitulatif PDF (enregistrer ou imprimer)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== 05 INDEMNITÉS D'ENTRETIEN ===================================================== -->
+  <div class="theme" id="theme-ie" data-persist="1">
+    <h2>Indemnités d'entretien</h2>
+    <p class="sub">Elles couvrent vos frais (eau, électricité, chauffage, jeux, produits d'hygiène…). Elles sont dues pour chaque jour où l'enfant est présent.</p>
+    <div class="kid-picker" data-for="ie"></div>
+
+    <div class="toggle-row"><span class="q">Que voulez-vous faire ?</span>
+      <div class="seg" id="ie-mode"><button class="on">Calculer le minimum légal</button><button>Vérifier un montant convenu</button></div></div>
+    <div class="field"><label>Mois concerné</label><input type="month" id="ie-mois"><div class="hint">Le minimum garanti change en général au 1er janvier (et parfois en cours d'année).</div></div>
+    <div class="grid2">
+      <div class="field"><label>Jours d'accueil dans le mois</label><input type="number" step="1" min="0" id="ie-jours-accueil" placeholder="ex. 20"><div class="hint">Jours où l'enfant est réellement venu.</div></div>
+      <div class="field"><label>Durée moyenne d'une journée d'accueil (heures)</label><input type="number" step="0.25" id="ie-heures" placeholder="ex. 9"></div>
+    </div>
+    <div class="toggle-row"><span class="q">Qui est l'employeur ?</span>
+      <div class="seg" id="ie-employeur"><button class="on">Les parents (particulier employeur)</button><button>Une crèche familiale / personne morale</button></div></div>
+    <div id="ie-contrat-wrap" class="field subblock" style="display:none"><label>Montant journalier prévu au contrat (€)</label><input type="number" step="0.01" id="ie-montant-contrat" placeholder="ex. 4.00"></div>
+
+    <div class="stub">
+      <div class="stub-head">Résultat</div>
+      <div class="stub-body">
+        <div class="result-line"><span class="lbl">Minimum garanti (MG) applicable</span><span class="val" id="out-ie-mg">—</span></div>
+        <div class="result-line"><span class="lbl">Minimum pour une journée de 9 h</span><span class="val" id="out-ie-9h">—</span></div>
+        <div class="result-line"><span class="lbl">Minimum légal pour une journée de cette durée</span><span class="val" id="out-ie-taux">—</span></div>
+        <div class="result-line"><span class="lbl">Jours d'accueil retenus</span><span class="val" id="out-ie-jours">—</span></div>
+        <div class="result-line total"><span class="lbl">Indemnité minimale du mois</span><span class="val" id="out-ie-mois-min">—</span></div>
+        <div id="ie-compare-results" style="display:none">
+          <div class="result-line"><span class="lbl">Montant prévu au contrat pour le mois</span><span class="val" id="out-ie-contrat">—</span></div>
+          <div class="result-line" id="row-ie-conformite"><span class="lbl">Conformité<span class="badge" id="ie-badge">—</span></span><span class="val" id="out-ie-ecart">—</span></div>
+        </div>
+        <div class="legal"><strong>Règle —</strong> CCN IDCC 3239 : l'indemnité d'entretien ne peut pas être inférieure à 90 % du minimum garanti pour une journée de 9 heures ; elle est calculée au prorata de la durée réelle d'accueil, sans jamais descendre sous 2,65 € par jour d'accueil. Pour un employeur personne morale (hors convention), la référence est 85 % du MG. Elle n'est pas due si l'enfant est absent. Elle n'est pas soumise à cotisations.</div>
+        <button class="btn primary block" onclick="askPrintChoice('ie','Indemnités d\'entretien — Récapitulatif')">📄 Récapitulatif PDF (enregistrer ou imprimer)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== 06 FIN DE CONTRAT ===================================================== -->
+  <div class="theme" id="theme-fin" data-persist="1">
+    <h2>Fin de contrat</h2>
+    <p class="sub" id="fin-sub">Préavis, dernier salaire, congés payés, régularisation, indemnité de rupture et documents à remettre.</p>
+    <div class="kid-picker" data-for="fin"></div>
+
+    <div class="toggle-row"><span class="q">Le contrat est-il en année complète ?</span>
+      <div class="seg" id="fin-type"><button class="on">Oui (année complète)</button><button>Non (année incomplète)</button></div></div>
+
+    <div class="section-label">1 · Qui met fin au contrat, et quand ?</div>
+    <div class="toggle-row"><span class="q">Qui met fin au contrat ?</span>
+      <div class="seg" id="fin-qui"><button class="on">Les parents (retrait de l'enfant)</button><button>Moi (démission)</button><button>Retrait / suspension d'agrément</button><button>Fin pendant l'essai</button><button>Avant le début de l'accueil</button><button>Décès du parent employeur</button><button>Décès de l'enfant</button><button>Mon départ à la retraite</button></div>
+      <div class="hint">« Avant le début de l'accueil » : un engagement réciproque a été signé, mais l'une des parties renonce avant le premier jour.</div></div>
+    <div class="toggle-row" id="fin-faute-row"><span class="q">Les parents invoquent-ils une faute grave ou lourde ?</span>
+      <div class="seg" id="fin-faute"><button class="on">Non</button><button>Oui</button></div></div>
+    <div class="grid2">
+      <div class="field"><label>Date de début du contrat</label><input type="date" id="fin-debut"></div>
+      <div class="field"><label id="fin-notif-label">Date d'envoi / de remise de la lettre</label><input type="date" id="fin-notif"><div class="hint" id="fin-notif-hint">Le préavis commence le jour de la première présentation de la lettre.</div></div>
+    </div>
+    <div class="subblock" id="fin-retraite-wrap" style="display:none">
+      <div class="info-box">Pour chaque famille, votre départ suit les règles de la démission : vous devez le préavis, et il n'y a pas d'indemnité de rupture. L'indemnité de départ à la retraite est versée par l'<b>IRCEM Prévoyance</b> (et non par les parents), sur demande, le lendemain de votre départ. Estimation :</div>
+      <div class="grid2">
+        <div class="field"><label>Mois travaillés comme assistante maternelle ou salariée du particulier employeur (toute la carrière)</label><input type="number" step="1" min="0" id="fin-ret-mois" placeholder="ex. 180"></div>
+        <div class="field"><label>Mois travaillés pendant les 7 dernières années (84 mois)</label><input type="number" step="1" min="0" max="84" id="fin-ret-recents" placeholder="ex. 84"></div>
+      </div>
+      <div class="field"><label>Salaire mensuel brut moyen, tous employeurs (le plus favorable des 5 dernières années, des 12 ou des 3 derniers mois)</label><input type="number" step="0.01" id="fin-ret-salaire" placeholder="ex. 2100"></div>
+    </div>
+    <div class="toggle-row" id="fin-preavis-row"><span class="q">Le préavis sera-t-il travaillé ?</span>
+      <div class="seg" id="fin-preavis-fait"><button class="on">Oui</button><button>Non, les parents m'en dispensent</button></div></div>
+    <div class="info-box" id="fin-preavis-info">—</div>
+
+    <div class="section-label">2 · Les montants</div>
+    <div class="toggle-row"><span class="q">Les montants que vous allez saisir sont-ils en brut ou en net ?</span>
+      <div class="seg" id="fin-unite"><button class="on">Brut</button><button>Net</button></div>
+      <div class="hint">En net, ils sont reconvertis en brut pour appliquer les méthodes légales.</div></div>
+    <div class="field"><label>Salaire du dernier mois, hors indemnités d'entretien (€)</label><input type="number" step="0.01" id="fin-salaire" placeholder="ex. 831.74">
+      <div class="hint">Si le dernier mois est incomplet, utilisez le thème « Mois incomplet ».</div></div>
+    <div class="toggle-row"><span class="q">Des indemnités d'entretien sont-elles dues pour ce dernier mois ?</span>
+      <div class="seg" id="fin-entretien"><button class="on">Non</button><button>Oui</button></div></div>
+    <div id="fin-entretien-wrap" class="field subblock" style="display:none"><label>Montant des indemnités d'entretien (€)</label><input type="number" step="0.01" id="fin-entretien-montant" placeholder="ex. 65"></div>
+
+    <div class="toggle-row"><span class="q">Reste-t-il des jours de congés payés non pris ou non payés ?</span>
+      <div class="seg" id="fin-cp"><button>Non</button><button class="on">Oui</button></div></div>
+    <div id="fin-cp-wrap" class="subblock">
+      <div class="field"><label>Jours de congés restants dus</label><input type="number" step="0.5" id="fin-jours" placeholder="ex. 3"><div class="hint">Voir le thème « Congés payés ».</div></div>
+      <div class="grid2">
+        <div class="field"><label>Salaire horaire (€)</label><input type="number" step="0.01" id="fin-taux" placeholder="ex. 4.50"></div>
+        <div class="field"><label>Heures par semaine (moyenne)</label><input type="number" step="0.25" id="fin-heures" placeholder="ex. 40"></div>
+      </div>
+      <div class="field"><label>Total des salaires de la période de référence pas encore « couverts » par des congés payés (€)</label><input type="number" step="0.01" id="fin-total-salaires" placeholder="ex. 6000"></div>
+    </div>
+
+    <div class="toggle-row" id="fin-regul-row"><span class="q" id="fin-regul-question">Faut-il calculer une régularisation ?</span>
+      <div class="seg" id="fin-regul"><button class="on">Non</button><button>Oui</button></div>
+      <div class="hint" id="fin-regul-hint"></div></div>
+    <div id="fin-regul-wrap" class="subblock" style="display:none">
+      <div id="fin-regul-warn" class="warn-box" style="display:none"></div>
+      <div id="fin-regul-qualify" style="display:none">
+        <div class="toggle-row"><span class="q">Le contrat comporte-t-il plusieurs rythmes d'accueil sur l'année (ex. rythme scolaire / vacances) ?</span>
+          <div class="seg" id="fin-regul-q1"><button class="on">Non</button><button>Oui</button></div></div>
+        <div class="toggle-row"><span class="q">Après un avenant, le nouveau salaire a-t-il tardé à être appliqué (au moins un mois payé à l'ancien montant) ?</span>
+          <div class="seg" id="fin-regul-q2"><button class="on">Non</button><button>Oui</button></div></div>
+      </div>
+      <div id="fin-regul-notapplicable" class="info-box" style="display:none"></div>
+      <div id="fin-regul-details" style="display:none">
+        <div class="grid2">
+          <div class="field"><label>Période concernée : début</label><input type="date" id="fin-regul-debut"></div>
+          <div class="field"><label>Période concernée : fin</label><input type="date" id="fin-regul-fin"><div class="hint">En général les 12 derniers mois (ou depuis le début s'il y a moins d'un an).</div></div>
+        </div>
+        <div class="toggle-row"><span class="q">Y a-t-il eu un ou plusieurs avenants pendant cette période (heures, salaire horaire ou mensualisé modifiés) ?</span>
+          <div class="seg" id="fin-regul-avenants"><button class="on">Non</button><button>Oui</button></div></div>
+        <div id="fin-regul-nbav-wrap" class="toggle-row" style="display:none"><span class="q">Combien d'avenants ? (4 au maximum)</span>
+          <div class="seg" id="fin-regul-nbav"><button class="on">1</button><button>2</button><button>3</button><button>4</button></div></div>
+        <div class="section-label" id="fin-regul-base-label" style="margin-top:6px;padding-top:0;border-top:none">Sur toute la période</div>
+        <div class="field"><label id="fin-regul-verse-label">Total des salaires mensualisés versés sur la période (€)</label><input type="number" step="0.01" id="fin-regul-verse" placeholder="ex. 9200"></div>
+        <div class="grid2">
+          <div class="field"><label id="fin-regul-heures-label">Total des heures réellement effectuées sur la période</label><input type="number" step="0.25" id="fin-regul-heures" placeholder="ex. 1520"></div>
+          <div class="field"><label>Salaire horaire (€)</label><input type="number" step="0.01" id="fin-regul-taux" placeholder="ex. 4.50"></div>
+        </div>
+        <div id="fin-regul-avs"></div>
+      </div>
+    </div>
+
+    <div class="toggle-row"><span class="q">L'indemnité de rupture est-elle due ?</span>
+      <div class="seg" id="fin-rupture"><button class="on">Non</button><button>Oui</button></div>
+      <div class="hint" id="fin-rupture-hint">Due par les parents qui retirent l'enfant après au moins 9 mois de contrat, sauf faute grave ou lourde.</div></div>
+    <div id="fin-rupture-wrap" class="field subblock" style="display:none"><label>Total des salaires bruts perçus pendant tout le contrat (hors entretien, repas, km)</label>
+      <input type="number" step="0.01" id="fin-rupture-total" placeholder="ex. 28500">
+      <div class="hint">Le total figure sur vos relevés Pajemploi (cumul du contrat). <a href="#" onclick="finEstimeTotal();return false;">Estimer à partir du contrat</a></div></div>
+
+    <div class="stub">
+      <div class="stub-head">Résultat</div>
+      <div class="stub-body">
+        <div class="result-line"><span class="lbl">Salaire du dernier mois (brut)</span><span class="val" id="out-fin-salaire">—</span></div>
+        <div class="result-line" id="row-fin-preavis" style="display:none"><span class="lbl">Indemnité compensatrice de préavis</span><span class="val" id="out-fin-preavis">—</span></div>
+        <div class="result-line" id="row-fin-retraite" style="display:none"><span class="lbl">Indemnité de départ à la retraite (versée par l'IRCEM, estimation, hors total)</span><span class="val" id="out-fin-retraite">—</span></div>
+        <div class="result-line" id="row-fin-engag" style="display:none"><span class="lbl">Indemnité forfaitaire d'engagement réciproque (½ mois de salaire brut)</span><span class="val" id="out-fin-engag">—</span></div>
+        <div class="result-line" id="row-fin-entretien" style="display:none"><span class="lbl">Indemnités d'entretien</span><span class="val" id="out-fin-entretien-r">—</span></div>
+        <div id="fin-cp-results">
+          <div class="result-line"><span class="lbl">Congés : méthode du maintien</span><span class="val" id="out-fin-maintien">—</span></div>
+          <div class="result-line"><span class="lbl">Congés : méthode du dixième</span><span class="val" id="out-fin-dixieme">—</span></div>
+          <div class="result-line fav"><span class="lbl">Indemnité de congés payés (la plus favorable)<span class="badge" id="fin-badge">—</span></span><span class="val" id="out-fin-cp">—</span></div>
+        </div>
+        <div id="fin-regul-results" style="display:none">
+          <div class="result-line"><span class="lbl">Régul. : période</span><span class="val" id="out-fin-periode">—</span></div>
+          <div id="fin-regul-detail"></div>
+          <div class="result-line"><span class="lbl" id="out-fin-regul-du-label">Régul. : salaire réellement dû</span><span class="val" id="out-fin-regul-du">—</span></div>
+          <div class="result-line"><span class="lbl" id="out-fin-regul-verse-label">Régul. : déjà versé</span><span class="val" id="out-fin-regul-verse-r">—</span></div>
+          <div class="result-line" id="row-fin-regul-ecart"><span class="lbl">Écart de régularisation<span class="badge" id="fin-regul-badge">—</span></span><span class="val" id="out-fin-regul-ecart">—</span></div>
+        </div>
+        <div id="fin-rupture-results" style="display:none">
+          <div class="result-line"><span class="lbl">Indemnité de rupture (1/80ᵉ des salaires bruts)</span><span class="val" id="out-fin-rupture">—</span></div>
+        </div>
+        <div class="result-line total"><span class="lbl">Total dû (brut)</span><span class="val" id="out-fin-total">—</span></div>
+        <div class="result-line"><span class="lbl">Total net (estimation)</span><span class="val" id="out-fin-net">—</span></div>
+        <div class="net-hint">Net estimé sur la part soumise à cotisations (salaire, préavis, congés, régularisation) ; entretien et indemnité de rupture ajoutés tels quels.</div>
+        <div class="pajemploi-block">
+          <div class="pajemploi-title">Documents à remettre à la fin du contrat</div>
+          <div class="result-line"><span class="lbl">Certificat de travail</span><span class="val">obligatoire</span></div>
+          <div class="result-line"><span class="lbl">Attestation France Travail (via Pajemploi)</span><span class="val">obligatoire</span></div>
+          <div class="result-line"><span class="lbl">Reçu pour solde de tout compte</span><span class="val">conseillé</span></div>
+          <div class="result-line"><span class="lbl">Dernier bulletin Pajemploi (avec indemnités)</span><span class="val">obligatoire</span></div>
+        </div>
+        <div class="legal"><strong>Règle —</strong> Préavis (CCN IDCC 3239) : 8 jours calendaires si moins de 3 mois d'ancienneté, 15 jours de 3 mois à moins d'un an, 1 mois au-delà ; pas de préavis pendant la période d'essai, ni en cas de faute grave ou lourde, ni en cas de retrait d'agrément. Si les parents dispensent de préavis, ils le paient (indemnité compensatrice). Congés non pris : indemnité au montant le plus favorable (art. L3141-24 du Code du travail). <u>Année incomplète</u> : la régularisation (salaire mensualisé versé comparé aux heures réellement effectuées) est obligatoire en fin de contrat ; s'il y a eu des avenants, chaque sous-période est calculée avec ses propres heures et son propre taux. <u>Année complète</u> : pas de régularisation de principe, sauf cas particuliers (rythmes variables, avenant appliqué en retard). Un trop-perçu ne se récupère qu'avec l'accord de la salariée ou une décision de justice. Indemnité de rupture : 1/80ᵉ du total des salaires bruts du contrat (hors entretien, repas, km), due par l'employeur qui retire l'enfant après 9 mois d'ancienneté, sauf faute grave ou lourde ; elle n'est pas soumise à cotisations ni à l'impôt dans les limites légales.</div>
+        <button class="btn primary block" onclick="askPrintChoice('fin','Fin de contrat — Récapitulatif')">📄 Récapitulatif PDF (enregistrer ou imprimer)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== 07 ABATTEMENT FISCAL ===================================================== -->
+  <div class="theme" id="theme-abattement">
+    <h2>Impôts : abattement</h2>
+    <p class="sub">Les assistantes maternelles ont un régime fiscal spécial : on déduit une somme forfaitaire pour chaque jour d'accueil de chaque enfant. Jusqu'à 8 enfants dans l'année (un employeur par enfant), chacun avec son propre contrat.</p>
+    <div class="box" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div class="hint" id="ab-save-status" style="flex:1;min-width:200px;margin:0">Enregistrement automatique sur ce téléphone.</div>
+      <button class="btn small danger" onclick="abResetForNewYear()">🗑️ Nouvelle année</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Année des revenus</label><input type="number" step="1" id="ab-annee" placeholder="ex. 2025">
+        <div class="hint">Ex. : en 2026, on déclare les revenus de 2025.</div></div>
+      <div class="field"><label>Abattement par jour complet (€)</label><input type="number" step="0.01" id="ab-taux" placeholder="auto">
+        <div class="hint" id="ab-taux-hint">Calculé automatiquement : 3 × le SMIC du 1er janvier de l'année.</div></div>
+    </div>
+    <div class="toggle-row"><span class="q">Nombre d'enfants accueillis dans l'année (= nombre d'employeurs)</span>
+      <div class="seg" id="ab-nbenfants"><button class="on">1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button></div>
+      <div class="hint">Un enfant parti en cours d'année compte aussi. <a href="#" onclick="abFillFromContracts();return false;">Reprendre mes enfants enregistrés</a></div></div>
+    <div class="info-box">Pour chaque mois : le <b>salaire net imposable</b> (sur le bulletin Pajemploi), les <b>indemnités</b> reçues (entretien, repas, km), la valeur des <b>repas fournis par les parents</b> s'il y en a, puis le nombre de <b>jours d'au moins 8 h</b> et le <b>total d'heures des jours de moins de 8 h</b> (converti automatiquement). Ne comptez que les jours où l'enfant était vraiment présent. Le mois de décembre de l'année précédente est proposé car il est souvent payé en janvier.</div>
+    <div id="ab-children"></div>
+
+    <div class="stub">
+      <div class="stub-head">Résultat, tous enfants confondus</div>
+      <div class="stub-body">
+        <div class="result-line"><span class="lbl">Total des sommes perçues</span><span class="val" id="out-ab-total-sal">—</span></div>
+        <div class="result-line"><span class="lbl">Total de l'abattement</span><span class="val" id="out-ab-total-abatt">—</span></div>
+        <div class="result-line total"><span class="lbl">Montant imposable à déclarer (régime spécial)</span><span class="val" id="out-ab-total-decl">—</span></div>
+        <div class="section-label">Quel régime est le plus avantageux ?</div>
+        <div class="result-line"><span class="lbl">Régime spécial des assistantes maternelles</span><span class="val" id="out-ab-special">—</span></div>
+        <div class="result-line"><span class="lbl">Régime ordinaire (salaires seuls, sans abattement)</span><span class="val" id="out-ab-commun">—</span></div>
+        <div class="result-line fav"><span class="lbl">Le plus favorable<span class="badge" id="ab-badge">—</span></span><span class="val" id="out-ab-gain">—</span></div>
+        <div class="pajemploi-block">
+          <div class="pajemploi-title">Sur votre déclaration de revenus</div>
+          <div class="result-line"><span class="lbl">Case 1AJ (ou 1BJ pour le déclarant 2) : corriger le montant pré-rempli et mettre</span><span class="val" id="out-ab-1aj">—</span></div>
+          <div class="result-line"><span class="lbl">Case 1GA (ou 1HA) : abattement, pour information</span><span class="val" id="out-ab-1ga">—</span></div>
+          <div class="result-line"><span class="lbl">Case 1GH (ou 1HH) : heures complémentaires/majorées exonérées</span><span class="val">montant de l'attestation Pajemploi</span></div>
+        </div>
+        <div class="legal"><strong>Règle —</strong> régime fiscal spécial des assistants maternels (art. 80 sexies du CGI ; BOI-RSA-CHAMP-20-40-20) : on part du total des sommes perçues (salaire net imposable + indemnités d'entretien, de repas, de déplacement + avantages en nature), puis on retire, pour chaque enfant et chaque jour de présence, 3 fois le SMIC horaire en vigueur au 1er janvier de l'année (4 fois pour un enfant handicapé, malade ou inadapté). Une journée de moins de 8 h donne un abattement proportionnel (heures ÷ 8). L'abattement ne peut pas dépasser les sommes perçues. Le montant pré-rempli par l'administration ne tient pas compte de l'abattement : il faut le corriger vous-même (1AJ/1BJ) avec le montant net d'abattement ; la case 1GA/1HA est seulement informative. La déduction de 10 % pour frais professionnels s'applique ensuite automatiquement. Le régime ordinaire (salaires seuls, indemnités non imposées) est parfois plus avantageux : comparez avant de choisir. Ce calcul est indicatif ; en cas de doute, appelez votre centre des impôts.</div>
+        <button class="btn primary block" onclick="askPrintChoice('abattement','Abattement fiscal — Récapitulatif')">📄 Récapitulatif PDF (enregistrer ou imprimer)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== 08 CMG ===================================================== -->
+  <div class="theme" id="theme-cmg">
+    <h2>Aide CMG des parents</h2>
+    <p class="sub">Estimation du complément de libre choix du mode de garde (CMG) versé par la CAF ou la MSA, et de ce qui reste à payer aux parents chaque mois. Utile pour présenter votre tarif à une famille.</p>
+    <div class="box" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="hint" id="cmg-save-status" style="flex:1;min-width:200px;margin:0">Enregistrement automatique sur ce téléphone.</div>
+      <button class="btn small" onclick="cmgArchiveMonth()">📦 Archiver ce mois</button>
+      <button class="btn small danger" onclick="cmgClearForNewMonth()">🗑️ Nouveau mois</button>
+    </div>
+    <div class="box" id="cmg-history-bar" style="display:none">
+      <div class="hint" style="margin:0 0 8px">Reprendre un mois déjà archivé comme point de départ :</div>
+      <div class="field" style="margin-bottom:8px"><select id="cmg-history-select" aria-label="Mois archivé à reprendre"></select></div>
+      <button class="btn small" onclick="cmgLoadHistorySelected()">Charger ce mois</button>
+    </div>
+
+    <div class="field"><label>Mois concerné</label><input type="month" id="cmg-mois"><div class="hint">Le barème du mois choisi s'applique automatiquement.</div></div>
+    <div class="box amber">
+      <div class="section-label">Barème appliqué pour ce mois</div>
+      <div id="cmg-bareme-view" class="hint" style="margin:0">—</div>
+      <div class="btn-row"><button class="btn small" onclick="regCheckUpdates(false)">🔄 Vérifier les mises à jour</button><a class="btn small" href="https://www.urssaf.fr/accueil/outils-documentation/simulateurs/calculer-reste-a-charge-cmg-pe.html" target="_blank" rel="noopener">Simulateur officiel ↗</a></div>
+    </div>
+
+    <div class="section-label">La famille</div>
+    <div class="toggle-row"><span class="q">Nombre d'enfants à charge dans le foyer (tous, y compris ceux qui ne sont pas gardés par vous)</span>
+      <div class="seg" id="cmg-nbenfants-foyer"><button class="on">1</button><button>2</button><button>3</button><button>4 à 7</button><button>8 et +</button></div>
+      <div class="hint">Plus il y a d'enfants à charge, plus l'aide est élevée. Un enfant handicapé (AEEH) compte double.</div></div>
+    <div class="toggle-row"><span class="q">Famille monoparentale ?</span>
+      <div class="seg" id="cmg-monoparental"><button class="on">Non</button><button>Oui</button></div>
+      <div class="hint">L'aide est alors versée jusqu'aux 12 ans de l'enfant (au lieu de 6 ans).</div></div>
+    <div class="field"><label>Ressources mensuelles du foyer (€)</label><input type="number" step="0.01" id="cmg-revenu" placeholder="ex. 3000">
+      <div class="hint">Revenu net catégoriel de l'avant-dernière année (avis d'imposition) divisé par 12.</div></div>
+
+    <div class="section-label">Les enfants de cette famille gardés par vous</div>
+    <div class="toggle-row"><span class="q">Combien d'enfants de cette famille gardez-vous ?</span>
+      <div class="seg" id="cmg-nbenfants-gardes"><button class="on">1</button><button>2</button><button>3</button><button>4</button></div></div>
+    <div id="cmg-children"></div>
+
+    <div class="stub">
+      <div class="stub-head">Résultat pour la famille</div>
+      <div class="stub-body">
+        <div id="cmg-warn"></div>
+        <div class="result-line"><span class="lbl">Coût mensuel de la garde (net + indemnités)</span><span class="val" id="out-cmg-cout-total">—</span></div>
+        <div class="result-line"><span class="lbl">Taux d'effort appliqué</span><span class="val" id="out-cmg-taux-effort">—</span></div>
+        <div class="result-line"><span class="lbl">CMG « rémunération » estimé</span><span class="val" id="out-cmg-total">—</span></div>
+        <div class="result-line total"><span class="lbl">Reste à payer par les parents chaque mois</span><span class="val" id="out-cmg-reste-total">—</span></div>
+        <div class="net-hint">Les cotisations sociales sont en plus prises en charge par la CAF/MSA (dans la limite du plafond horaire) : elles ne sont pas comptées ici.</div>
+        <div class="legal"><strong>Règle —</strong> depuis la réforme du 1er septembre 2025 : CMG = coût mensuel de la garde (salaire net + indemnités d'entretien et de repas, plafonné par heure) × [1 − (ressources mensuelles × taux d'effort ÷ coût horaire de référence)]. Les ressources sont comptées entre un plancher et un plafond ; le taux d'effort baisse avec le nombre d'enfants à charge. Le coût au-delà du plafond horaire reste à la charge des parents. Estimation indicative : seule la CAF ou la MSA fixe le montant exact (résidence alternée, AEEH, situations particulières…). Vérifiez avec le simulateur officiel de l'Urssaf.</div>
+        <button class="btn primary block" onclick="askPrintChoice('cmg','Aide CMG — Récapitulatif')">📄 Récapitulatif PDF (enregistrer ou imprimer)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== SUIVI & PAIE ===================================================== -->
+  <div class="theme" id="theme-suivi">
+    <h2>Suivi &amp; préparation de la paie</h2>
+    <p class="sub">Le contrat fixe le « normal » : notez seulement ce qui change. Tout reste sur ce téléphone.</p>
+    <div id="suivi-content"></div>
+  </div>
+
+  <!-- ===================================================== 09 DOCUMENTS ===================================================== -->
+  <div class="theme" id="theme-docs">
+    <h2>Documents</h2>
+    <p class="sub">Documents pré-remplis pour l'embauche, la vie du contrat et la fin du contrat, à enregistrer en PDF ou à imprimer.</p>
+    <div id="docs-content"></div>
+  </div>
+
+  <!-- ===================================================== RÉGLAGES ===================================================== -->
+  <div class="theme" id="theme-reglages">
+    <h2>Réglages</h2>
+    <p class="sub">Préférences, réglementation et sauvegarde.</p>
+
+    <div class="section-label" style="margin-top:0;padding-top:0;border-top:none">Mon profil (pour les documents)</div>
+    <div class="field"><label>Prénom et nom</label><input type="text" id="prof-nom" autocomplete="off"></div>
+    <div class="field"><label>Adresse</label><input type="text" id="prof-adresse" autocomplete="off"></div>
+    <div class="grid2">
+      <div class="field"><label>Téléphone</label><input type="text" id="prof-tel" inputmode="tel" autocomplete="off"></div>
+      <div class="field"><label>E-mail</label><input type="text" id="prof-email" inputmode="email" autocomplete="off"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Numéro d'agrément</label><input type="text" id="prof-agrementNum" autocomplete="off"></div>
+      <div class="field"><label>Date de l'agrément (ou du renouvellement)</label><input type="date" id="prof-agrementDate"><div class="hint">Le carnet vous préviendra avant l'échéance.</div></div>
+    </div>
+    <div class="field"><label>Durée de votre agrément</label><select id="prof-agrementDuree"><option value="5">5 ans</option><option value="10">10 ans (épreuves EP1 et EP3 du CAP AEPE validées)</option></select>
+    </div>
+    <div class="field"><label>Assurance responsabilité civile professionnelle (compagnie, n° de contrat)</label><input type="text" id="prof-assurance" autocomplete="off"></div>
+    <div class="field"><label>Assurance du véhicule pour le transport d'enfants (si besoin)</label><input type="text" id="prof-assuranceAuto" autocomplete="off"></div>
+    <div class="hint" style="margin:-6px 0 14px">Restent sur ce téléphone. Votre numéro de sécurité sociale n'est jamais enregistré : il s'écrit à la main sur les documents.</div>
+
+    <div class="section-label">Mon activité</div>
+    <div class="toggle-row"><span class="q">Travaillez-vous en Alsace-Moselle (Bas-Rhin, Haut-Rhin, Moselle) ?</span>
+      <div class="seg" id="set-am"><button class="on">Non</button><button>Oui</button></div>
+      <div class="hint">Les cotisations y sont un peu plus élevées : le net estimé en tient compte.</div></div>
+    <div class="field"><label>Nombre d'enfants autorisés en même temps par votre agrément</label><input type="number" step="1" min="1" max="6" id="set-agrement" placeholder="4"></div>
+    <div class="grid2">
+      <div class="field"><label>Zone de vacances scolaires</label><select id="set-zone"><option value="">—</option><option value="A">Zone A</option><option value="B">Zone B</option><option value="C">Zone C</option></select>
+        <div class="hint"><a href="#" onclick="loadVacances(STATE.settings.zone);return false;">Télécharger le calendrier officiel</a></div></div>
+      <div class="field"><label>Heure du rappel du soir (suivi)</label><input type="time" id="set-rappel"><div class="hint"><a href="#" onclick="downloadICS();return false;">Ajouter les rappels à mon agenda</a></div></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Code de verrouillage (4 à 8 chiffres, facultatif)</label><input type="password" inputmode="numeric" id="set-pin-new" placeholder="laisser vide = pas de code" autocomplete="new-password">
+        <div class="hint"><a href="#" onclick="setPin();return false;">Enregistrer ce code</a> · <a href="#" onclick="removePin();return false;">Supprimer le code</a>. Protège l'écran ; ce n'est pas un chiffrement.</div></div>
+      <div class="field"><label>Durée de conservation après la fin d'un contrat (années)</label><input type="number" step="1" min="1" max="10" id="set-conservation" placeholder="5"></div>
+    </div>
+    <div class="toggle-row"><span class="q">Je note mes journées au quotidien (suivi)</span>
+      <div class="seg" id="set-suivi"><button class="on">Oui</button><button>Non, je calcule à partir du planning</button></div>
+      <div class="hint">« Non » : l'écran Aujourd'hui affiche simplement vos enfants ; tous les calculs restent disponibles.</div></div>
+    <div class="toggle-row"><span class="q">Taille du texte</span>
+      <div class="seg" id="set-font"><button class="on">Normale</button><button>Grande</button><button>Très grande</button></div></div>
+    <div class="toggle-row"><span class="q">Apparence</span>
+      <div class="seg" id="set-theme"><button class="on">Automatique</button><button>Clair</button><button>Sombre</button></div></div>
+
+    <div class="section-label">Mises à jour réglementaires</div>
+    <div class="box">
+      <div id="reg-status" class="hint" style="margin:0 0 10px">—</div>
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn primary" onclick="regCheckUpdates(false)">🔄 Rechercher les mises à jour</button>
+        <button class="btn" onclick="regImportPick()">📂 Importer un fichier de réglementation</button>
+        <input type="file" id="reg-file-input" accept="application/json,.json" style="display:none">
+      </div>
+      <div class="toggle-row" style="margin-top:14px"><span class="q">Rechercher automatiquement à l'ouverture (une fois par semaine, si internet)</span>
+        <div class="seg" id="set-autoreg"><button>Non</button><button class="on">Oui</button></div></div>
+      <details class="help"><summary>Réglage avancé : adresse de la source</summary><div>
+        <div class="field"><label>Adresse du fichier de réglementation</label><input type="url" id="set-regurl" placeholder="reglementation.json (à côté de l'appli)"></div>
+        Par défaut, l'appli lit le fichier <b>reglementation.json</b> publié à côté d'elle. Vous pouvez indiquer une autre adresse (ex. un fichier tenu à jour par votre relais petite enfance ou votre association).</div></details>
+    </div>
+    <div class="info-box">Chaque valeur ci-dessous a une <b>date d'effet</b> : un calcul portant sur une date donnée utilise automatiquement la valeur en vigueur à cette date. Vous pouvez ajouter une valeur vous-même (bouton ✎) si un texte paraît avant la mise à jour de l'appli.</div>
+    <div id="reg-table"></div>
+
+    <div class="section-label">Sauvegarde</div>
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn" onclick="syncExport()">⬆️ Faire une copie de sécurité</button>
+      <button class="btn" onclick="syncImportPick()">⬇️ Restaurer une copie</button>
+      <button class="btn danger" onclick="wipeAll()">🗑️ Tout effacer</button>
+    </div>
+    <input type="file" id="sync-file-input" accept="application/json,.json" style="display:none">
+  </div>
+
+  <!-- ===================================================== AIDE ===================================================== -->
+  <div class="theme" id="theme-aide">
+    <h2>Aide et mots utiles</h2>
+    <p class="sub">Les notions essentielles, expliquées simplement.</p>
+    <div id="aide-content"></div>
+  </div>
+</div>
+
+<nav class="tabbar" id="tabbar" aria-label="Navigation principale">
+  <button data-tab="accueil" onclick="goTab('accueil')"><span class="ti">🏠</span><span>Aujourd'hui</span></button>
+  <button data-tab="mois" onclick="goTab('mois')"><span class="ti">📅</span><span>Mois</span></button>
+  <button data-tab="annee" onclick="goTab('annee')"><span class="ti">🗓️</span><span>Année</span></button>
+  <button data-tab="enfants" onclick="goTab('enfants')"><span class="ti">👶</span><span>Enfants</span></button>
+  <button data-tab="outils" onclick="goTab('outils')"><span class="ti">🧰</span><span>Outils</span></button>
+</nav>
+<div class="update-bar" id="update-bar" style="display:none">Une nouvelle version du carnet est prête. <button class="btn small primary" onclick="applyUpdate()">Mettre à jour</button></div>
+<div class="offline-bar" id="offline-bar" style="display:none">Hors connexion : tout fonctionne, les données restent sur le téléphone.</div>
+<script src="reg.js"></script>
+<script src="js/core.js"></script>
+<script src="js/contrats.js"></script>
+<script src="js/themes.js"></script>
+<script src="js/fiscal.js"></script>
+<script src="js/suivi.js"></script>
+<script src="js/docs.js"></script>
+<script src="js/io.js"></script>
+<script src="js/plus.js"></script>
+<script src="js/shell.js"></script>
+</body>
+</html>

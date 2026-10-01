@@ -1,0 +1,680 @@
+{
+  "schema": 1,
+  "version": "2026-10-01",
+  "categories": {
+    "salaire": "Salaire et heures",
+    "cotisations": "Cotisations (brut → net)",
+    "entretien": "Indemnités d'entretien",
+    "conges": "Congés payés",
+    "temps": "Temps de travail et agrément",
+    "absences": "Absences et congés spéciaux",
+    "fin": "Fin de contrat",
+    "fiscal": "Impôt sur le revenu (abattement)",
+    "cmg": "CMG (aide versée aux parents)"
+  },
+  "params": {
+    "smic": {
+      "cat": "salaire",
+      "label": "SMIC horaire brut",
+      "unit": "€/h",
+      "src": "https://www.service-public.fr/particuliers/vosdroits/F2300",
+      "values": [
+        {
+          "du": "2025-01-01",
+          "v": 11.88
+        },
+        {
+          "du": "2026-01-01",
+          "v": 12.02
+        },
+        {
+          "du": "2026-06-01",
+          "v": 12.31
+        }
+      ]
+    },
+    "salMin": {
+      "cat": "salaire",
+      "label": "Salaire horaire minimum conventionnel brut (par enfant)",
+      "unit": "€/h",
+      "note": "CCN IDCC 3239 — avenant n°10 du 5 février 2026 pour la valeur au 1er juin 2026.",
+      "src": "https://www.pajemploi.urssaf.fr/",
+      "values": [
+        {
+          "du": "2026-01-01",
+          "v": 3.64
+        },
+        {
+          "du": "2026-06-01",
+          "v": 4.2
+        }
+      ]
+    },
+    "salMinTitre": {
+      "cat": "salaire",
+      "label": "Salaire horaire minimum brut avec titre professionnel AM-AP",
+      "unit": "€/h",
+      "values": [
+        {
+          "du": "2026-01-01",
+          "v": 3.79
+        },
+        {
+          "du": "2026-06-01",
+          "v": 4.37
+        }
+      ]
+    },
+    "seuilMaj": {
+      "cat": "salaire",
+      "label": "Seuil hebdomadaire au-delà duquel les heures sont majorées",
+      "unit": "h/sem",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 45
+        }
+      ]
+    },
+    "majMin": {
+      "cat": "salaire",
+      "label": "Majoration minimale des heures au-delà de 45 h",
+      "unit": "%",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 10
+        }
+      ]
+    },
+    "majFerie": {
+      "cat": "salaire",
+      "label": "Majoration d'un jour férié ordinaire travaillé",
+      "unit": "%",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 10
+        }
+      ]
+    },
+    "majPremierMai": {
+      "cat": "salaire",
+      "label": "Majoration du 1er mai travaillé",
+      "unit": "%",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 100
+        }
+      ]
+    },
+    "netRatio": {
+      "cat": "cotisations",
+      "label": "Rapport net / brut (cas général)",
+      "unit": "ratio",
+      "note": "Cotisations salariales ≈ 21,88 % du brut. Le net exact est toujours celui calculé par Pajemploi.",
+      "values": [
+        {
+          "du": "2025-01-01",
+          "v": 0.7823
+        },
+        {
+          "du": "2026-01-01",
+          "v": 0.7812
+        }
+      ]
+    },
+    "netRatioAM": {
+      "cat": "cotisations",
+      "label": "Rapport net / brut (Alsace-Moselle)",
+      "unit": "ratio",
+      "values": [
+        {
+          "du": "2025-01-01",
+          "v": 0.7693
+        },
+        {
+          "du": "2026-01-01",
+          "v": 0.7682
+        }
+      ]
+    },
+    "hsReduction": {
+      "cat": "cotisations",
+      "label": "Réduction de cotisations salariales sur les heures complémentaires et majorées",
+      "unit": "ratio",
+      "note": "Réduction égale aux cotisations retraite de base et complémentaire (loi du 24 décembre 2018).",
+      "values": [
+        {
+          "du": "2019-01-01",
+          "v": 0.1131
+        }
+      ]
+    },
+    "csgNonDed": {
+      "cat": "cotisations",
+      "label": "CSG non déductible + CRDS (ajoutées au net pour obtenir le net imposable)",
+      "unit": "ratio",
+      "values": [
+        {
+          "du": "2018-01-01",
+          "v": 0.029
+        }
+      ]
+    },
+    "assietteCsg": {
+      "cat": "cotisations",
+      "label": "Assiette de la CSG/CRDS (part du brut)",
+      "unit": "ratio",
+      "values": [
+        {
+          "du": "2018-01-01",
+          "v": 0.9825
+        }
+      ]
+    },
+    "hsExoPlafond": {
+      "cat": "cotisations",
+      "label": "Plafond annuel d'exonération d'impôt des heures complémentaires et majorées",
+      "unit": "€/an",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 7500
+        }
+      ]
+    },
+    "mg": {
+      "cat": "entretien",
+      "label": "Minimum garanti (MG)",
+      "unit": "€",
+      "src": "https://www.urssaf.fr/accueil/actualites/augmentation-smic.html",
+      "values": [
+        {
+          "du": "2025-01-01",
+          "v": 4.22
+        },
+        {
+          "du": "2026-01-01",
+          "v": 4.25
+        },
+        {
+          "du": "2026-06-01",
+          "v": 4.35
+        }
+      ]
+    },
+    "iePct": {
+      "cat": "entretien",
+      "label": "Indemnité d'entretien minimale : part du MG pour une journée de référence",
+      "unit": "ratio",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 0.9
+        }
+      ]
+    },
+    "ieHeuresRef": {
+      "cat": "entretien",
+      "label": "Durée de la journée de référence",
+      "unit": "h",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 9
+        }
+      ]
+    },
+    "iePlancher": {
+      "cat": "entretien",
+      "label": "Plancher conventionnel par journée d'accueil",
+      "unit": "€/jour",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 2.65
+        }
+      ]
+    },
+    "iePctPM": {
+      "cat": "entretien",
+      "label": "Part du MG si l'employeur est une personne morale (hors CCN)",
+      "unit": "ratio",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 0.85
+        }
+      ]
+    },
+    "cpParMois": {
+      "cat": "conges",
+      "label": "Jours ouvrables acquis par mois (ou 4 semaines) travaillé",
+      "unit": "j",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 2.5
+        }
+      ]
+    },
+    "cpMax": {
+      "cat": "conges",
+      "label": "Plafond de jours acquis par période de référence",
+      "unit": "j",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 30
+        }
+      ]
+    },
+    "cpMaladie": {
+      "cat": "conges",
+      "label": "Jours acquis par mois d'arrêt maladie non professionnelle",
+      "unit": "j",
+      "note": "Loi n°2024-364 du 22 avril 2024 : 2 jours par mois, 24 jours maximum par an.",
+      "values": [
+        {
+          "du": "2024-04-24",
+          "v": 2
+        }
+      ]
+    },
+    "cpMaladieMax": {
+      "cat": "conges",
+      "label": "Plafond annuel des jours acquis pendant un arrêt maladie non professionnelle",
+      "unit": "j",
+      "values": [
+        {
+          "du": "2024-04-24",
+          "v": 24
+        }
+      ]
+    },
+    "hMaxSemaine": {
+      "cat": "temps",
+      "label": "Durée hebdomadaire maximale moyenne (sur 4 mois)",
+      "unit": "h",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 48
+        }
+      ]
+    },
+    "hMaxJour": {
+      "cat": "temps",
+      "label": "Amplitude quotidienne maximale (11 h de repos consécutif obligatoire)",
+      "unit": "h",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 13
+        }
+      ]
+    },
+    "agrementMax": {
+      "cat": "temps",
+      "label": "Nombre maximal d'enfants accueillis simultanément (cas général)",
+      "unit": "enfants",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 4
+        }
+      ]
+    },
+    "absMaladieEnfant": {
+      "cat": "absences",
+      "label": "Jours d'absence de l'enfant malade (certificat) déductibles par période de 12 mois",
+      "unit": "j",
+      "note": "Période de 12 mois comptée à partir de la date d'effet du contrat, puis de chaque date anniversaire.",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 5
+        }
+      ]
+    },
+    "absMaladieLongue": {
+      "cat": "absences",
+      "label": "Absence pour maladie de l'enfant à partir de laquelle le salaire n'est plus dû",
+      "unit": "j consécutifs",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 14
+        }
+      ]
+    },
+    "adaptationMax": {
+      "cat": "absences",
+      "label": "Durée maximale de la période d'adaptation (comprise dans l'essai)",
+      "unit": "jours calendaires",
+      "note": "Depuis la CCN de 2022, le premier mois se calcule avec la méthode de la Cour de cassation (plus « au réel »).",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 30
+        }
+      ]
+    },
+    "evtFamiliaux": {
+      "cat": "absences",
+      "label": "Congés rémunérés pour événements familiaux (jours)",
+      "unit": "jours",
+      "note": "Minimum légal (Code du travail, art. L3142-4) : les jours pris au-delà ne sont pas rémunérés. Le congé de deuil d'un enfant (8 jours en plus) est indemnisé par la CPAM, pas par les parents.",
+      "src": "https://www.service-public.fr/particuliers/vosdroits/F2278",
+      "values": [
+        {
+          "du": "2023-07-01",
+          "v": {
+            "mariage": 4,
+            "mariageEnfant": 1,
+            "naissance": 3,
+            "decesEnfant": 5,
+            "decesEnfantMoins25": 7,
+            "decesConjoint": 3,
+            "decesParentFratrie": 3,
+            "handicapEnfant": 5
+          }
+        }
+      ]
+    },
+    "congeDeuil": {
+      "cat": "absences",
+      "label": "Congé de deuil d'un enfant de moins de 25 ans (indemnisé par la CPAM)",
+      "unit": "jours",
+      "values": [
+        {
+          "du": "2020-07-01",
+          "v": 8
+        }
+      ]
+    },
+    "enfantMaladeAssmat": {
+      "cat": "absences",
+      "label": "Congé non rémunéré pour enfant malade de l'assmat [cas général, enfant < 1 an ou 3 enfants et plus]",
+      "unit": "jours/an",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": [
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    "ruptureDiviseur": {
+      "cat": "fin",
+      "label": "Indemnité de rupture : fraction du total des salaires bruts",
+      "unit": "1/x",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 80
+        }
+      ]
+    },
+    "retraiteBareme": {
+      "cat": "fin",
+      "label": "Indemnité conventionnelle de départ volontaire à la retraite, versée par l'IRCEM [10, 15, 20, 30 ans dans le secteur → mois de salaire brut]",
+      "unit": "mois",
+      "note": "Conditions : 120 mois travaillés dans le secteur, dont 60 mois dans les 84 mois précédant le départ. Salaire de référence : la moyenne mensuelle brute la plus favorable des 60, 12 ou 3 derniers mois, tous employeurs.",
+      "src": "https://www.ircem.com/prevoyance/indemnite-conventionnelle-de-depart-volontaire-a-la-retraite/",
+      "values": [
+        {
+          "du": "2023-01-01",
+          "v": [
+            1,
+            1.5,
+            2,
+            2.5
+          ]
+        }
+      ]
+    },
+    "ruptureAnciennete": {
+      "cat": "fin",
+      "label": "Ancienneté minimale pour l'indemnité de rupture",
+      "unit": "mois",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": 9
+        }
+      ]
+    },
+    "preavis": {
+      "cat": "fin",
+      "label": "Préavis selon l'ancienneté [<3 mois, 3 mois à <1 an, ≥1 an]",
+      "unit": "jours/mois",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": [
+            {
+              "jours": 8
+            },
+            {
+              "jours": 15
+            },
+            {
+              "mois": 1
+            }
+          ]
+        }
+      ]
+    },
+    "essai": {
+      "cat": "fin",
+      "label": "Période d'essai maximale [1 à 3 jours/sem., 4 jours/sem. et plus]",
+      "unit": "mois",
+      "values": [
+        {
+          "du": "2022-01-01",
+          "v": [
+            3,
+            2
+          ]
+        }
+      ]
+    },
+    "abatMult": {
+      "cat": "fiscal",
+      "label": "Abattement : nombre de SMIC horaires par jour et par enfant",
+      "unit": "× SMIC",
+      "note": "SMIC retenu : celui en vigueur au 1er janvier de l'année des revenus.",
+      "values": [
+        {
+          "du": "2000-01-01",
+          "v": 3
+        }
+      ]
+    },
+    "abatMultMaj": {
+      "cat": "fiscal",
+      "label": "Abattement majoré (enfant handicapé, malade ou inadapté)",
+      "unit": "× SMIC",
+      "values": [
+        {
+          "du": "2000-01-01",
+          "v": 4
+        }
+      ]
+    },
+    "abatMult24": {
+      "cat": "fiscal",
+      "label": "Abattement pour un accueil continu de 24 heures",
+      "unit": "× SMIC",
+      "note": "5 × SMIC si l'enfant accueilli 24 h est aussi handicapé, malade ou inadapté.",
+      "values": [
+        {
+          "du": "2000-01-01",
+          "v": 4
+        }
+      ]
+    },
+    "abatHeuresJour": {
+      "cat": "fiscal",
+      "label": "Journée complète pour l'abattement",
+      "unit": "h",
+      "values": [
+        {
+          "du": "2000-01-01",
+          "v": 8
+        }
+      ]
+    },
+    "repasAvantage": {
+      "cat": "fiscal",
+      "label": "Valeur d'un repas fourni par les parents (avantage en nature)",
+      "unit": "€/repas",
+      "values": [
+        {
+          "du": "2025-01-01",
+          "v": 5.45
+        },
+        {
+          "du": "2026-01-01",
+          "v": 5.5
+        }
+      ]
+    },
+    "cmgCHR": {
+      "cat": "cmg",
+      "label": "Coût horaire de référence (assistant maternel)",
+      "unit": "€/h",
+      "src": "https://www.urssaf.fr/accueil/actualites/actualite-reevaluation-cmg.html",
+      "values": [
+        {
+          "du": "2025-09-01",
+          "v": 4.85
+        },
+        {
+          "du": "2026-04-01",
+          "v": 4.91
+        }
+      ]
+    },
+    "cmgPlafondH": {
+      "cat": "cmg",
+      "label": "Plafond horaire pris en compte (salaire net + indemnités, par heure)",
+      "unit": "€/h",
+      "values": [
+        {
+          "du": "2025-09-01",
+          "v": 8
+        },
+        {
+          "du": "2026-04-01",
+          "v": 8.09
+        }
+      ]
+    },
+    "cmgTauxEffort": {
+      "cat": "cmg",
+      "label": "Taux d'effort horaire [1, 2, 3, 4 à 7, 8 enfants et plus à charge]",
+      "unit": "%",
+      "values": [
+        {
+          "du": "2025-09-01",
+          "v": [
+            0.0619,
+            0.0516,
+            0.0413,
+            0.031,
+            0.0206
+          ]
+        }
+      ]
+    },
+    "cmgPlancher": {
+      "cat": "cmg",
+      "label": "Plancher de ressources mensuelles",
+      "unit": "€/mois",
+      "values": [
+        {
+          "du": "2025-09-01",
+          "v": 814.02
+        },
+        {
+          "du": "2026-04-01",
+          "v": 821
+        }
+      ]
+    },
+    "cmgPlafond": {
+      "cat": "cmg",
+      "label": "Plafond de ressources mensuelles",
+      "unit": "€/mois",
+      "values": [
+        {
+          "du": "2025-09-01",
+          "v": 8500
+        }
+      ]
+    },
+    "cmgAgeMax": {
+      "cat": "cmg",
+      "label": "Âge limite de l'enfant (couple)",
+      "unit": "ans",
+      "values": [
+        {
+          "du": "2025-09-01",
+          "v": 6
+        }
+      ]
+    },
+    "cmgAgeMaxMono": {
+      "cat": "cmg",
+      "label": "Âge limite de l'enfant (famille monoparentale)",
+      "unit": "ans",
+      "values": [
+        {
+          "du": "2025-09-01",
+          "v": 12
+        }
+      ]
+    }
+  },
+  "changelog": [
+    {
+      "date": "2026-06-01",
+      "cats": [
+        "salaire",
+        "entretien",
+        "fiscal"
+      ],
+      "text": "SMIC 12,31 €/h ; minimum garanti 4,35 € (indemnité d'entretien de 9 h : 3,92 €) ; salaire minimum assistant maternel 4,20 € brut/h (4,37 € avec titre AM-AP)."
+    },
+    {
+      "date": "2026-04-01",
+      "cats": [
+        "cmg"
+      ],
+      "text": "CMG : coût horaire de référence 4,91 €, plafond horaire 8,09 €."
+    },
+    {
+      "date": "2026-01-01",
+      "cats": [
+        "salaire",
+        "entretien",
+        "cotisations",
+        "fiscal"
+      ],
+      "text": "SMIC 12,02 €/h ; MG 4,25 € ; salaire minimum 3,64 € brut/h ; abattement fiscal des revenus 2026 = 3 × 12,02 € = 36,06 €/jour."
+    },
+    {
+      "date": "2025-09-01",
+      "cats": [
+        "cmg"
+      ],
+      "text": "Réforme du CMG : calcul à l'heure selon les ressources et un taux d'effort."
+    }
+  ]
+}
